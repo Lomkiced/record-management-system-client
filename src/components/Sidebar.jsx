@@ -62,22 +62,42 @@ const Sidebar = () => {
   const menuItems = useMemo(() => {
     if (!user) return [];
     
+    // --- ADMIN MENU (Defined once, used for ADMIN and REGIONAL_ADMIN) ---
+    const ADMIN_MENU = [
+      { category: 'Regional Command', items: [
+          { path: '/dashboard', label: 'Dashboard', icon: Icons.Dashboard }
+      ]},
+      { category: 'Governance', items: [
+          { path: '/registry', label: 'Regional Registry', icon: Icons.Folder },
+          { path: '/codex', label: 'Policy Codex', icon: Icons.Book }
+      ]},
+      { category: 'Workforce', items: [
+          // This is the button you were missing
+          { path: '/users', label: 'Unit Staff', icon: Icons.Users } 
+      ]}
+    ];
+
     const ROLE_MENUS = {
+      // 1. GLOBAL OVERSEER
       'SUPER_ADMIN': [
         { category: 'Overview', items: [{ path: '/dashboard', label: 'Command Center', icon: Icons.Dashboard }, { path: '/global-map', label: 'Global Map', icon: Icons.Globe }] },
         { category: 'Governance', items: [{ path: '/regions', label: 'Regional Units', icon: Icons.Map }, { path: '/registry', label: 'Central Registry', icon: Icons.Folder }, { path: '/codex', label: 'Codex (Rules)', icon: Icons.Book }, { path: '/users', label: 'Personnel', icon: Icons.Users }] },
         { category: 'Security', items: [{ path: '/audit', label: 'Audit Logs', icon: Icons.Shield }, { path: '/branding', label: 'System Branding', icon: Icons.Palette }] }
       ],
-      'ADMIN': [
-        { category: 'Regional', items: [{ path: '/dashboard', label: 'Dashboard', icon: Icons.Dashboard }, { path: '/registry', label: 'My Documents', icon: Icons.Folder }, { path: '/codex', label: 'Codex', icon: Icons.Book }] },
-        { category: 'Team', items: [{ path: '/users', label: 'Staff Management', icon: Icons.Users }] }
-      ],
+      
+      // 2. REGIONAL DIRECTOR (Admin) - HANDLES BOTH NAMING CONVENTIONS
+      'ADMIN': ADMIN_MENU,
+      'REGIONAL_ADMIN': ADMIN_MENU,
+
+      // 3. OPERATIONAL STAFF
       'STAFF': [
-        { category: 'Workspace', items: [{ path: '/dashboard', label: 'Dashboard', icon: Icons.Home }, { path: '/registry', label: 'File Search', icon: Icons.Search }, { path: '/codex', label: 'Codex', icon: Icons.Book }] }
+        { category: 'Workspace', items: [{ path: '/dashboard', label: 'Dashboard', icon: Icons.Home }, { path: '/registry', label: 'File Search', icon: Icons.Search }, { path: '/codex', label: 'Reference Codex', icon: Icons.Book }] }
       ]
     };
 
-    const roleKey = user.role ? user.role.toUpperCase() : 'STAFF';
+    // Normalize: Handle spaces, underscores, and casing
+    const roleKey = user.role ? user.role.toUpperCase().replace(' ', '_') : 'STAFF';
+    
     return ROLE_MENUS[roleKey] || ROLE_MENUS['STAFF'];
   }, [user]);
 
@@ -94,6 +114,7 @@ const Sidebar = () => {
         z-50 shadow-2xl shadow-black
       `}
     >
+      {/* HEADER */}
       <div className="h-20 flex items-center justify-center relative border-b border-slate-800/50">
         <div className={`flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'opacity-0 scale-90 hidden' : 'opacity-100 scale-100'}`}>
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -119,6 +140,7 @@ const Sidebar = () => {
         </button>
       </div>
 
+      {/* NAVIGATION */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-6 space-y-8 custom-scrollbar">
         {menuItems.map((section, idx) => (
           <div key={idx}>
@@ -145,7 +167,7 @@ const Sidebar = () => {
         ))}
       </div>
 
-      {/* --- REFINED USER PROFILE FOOTER --- */}
+      {/* FOOTER */}
       <div className="p-4 border-t border-slate-800 bg-[#080C17]">
         <div className={`
            relative
@@ -154,7 +176,6 @@ const Sidebar = () => {
            group cursor-pointer
            ${isCollapsed ? 'justify-center' : ''} flex items-center gap-3
         `}>
-           {/* Avatar Container: Fades out on hover IF collapsed */}
            <div className={`relative shrink-0 transition-opacity duration-300 ${isCollapsed ? 'group-hover:opacity-0' : ''}`}>
              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-inner">
                {user.name?.charAt(0) || 'U'}
@@ -169,10 +190,6 @@ const Sidebar = () => {
              </div>
            )}
 
-           {/* Logout Button: Shows on hover. 
-               If Collapsed: Centers itself over avatar.
-               If Expanded: Appears on the right.
-           */}
            <button 
              onClick={logout} 
              title="Logout"
