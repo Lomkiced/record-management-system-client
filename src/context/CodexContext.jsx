@@ -1,42 +1,95 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth } from './AuthContext';
 
 const CodexContext = createContext();
 
 export const CodexProvider = ({ children }) => {
-  // 1. MASTER DATA: Categories (NAP Series)
-  const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('dost_codex_cats');
-    return saved ? JSON.parse(saved) : [
-      { category_id: 1, name: 'Administrative Records', region: 'Global' },
-      { category_id: 2, name: 'Financial Records', region: 'Global' },
-      { category_id: 3, name: 'Legal Records', region: 'Global' },
-      { category_id: 4, name: 'Ilocos Heritage Projects', region: 'Ilocos Region' }, // Specific to R1
-      { category_id: 5, name: 'Metro Manila Operations', region: 'National Capital Region' }, // Specific to NCR
-    ];
-  });
-
-  // 2. MASTER DATA: Document Types (Rules)
-  const [types, setTypes] = useState(() => {
-    const saved = localStorage.getItem('dost_codex_types');
-    return saved ? JSON.parse(saved) : [
-      { type_id: 101, category_id: 1, type_name: 'Annual Reports', retention_period: 'Permanent', region: 'Global' },
-      { type_id: 102, category_id: 1, type_name: 'Office Orders / Memos', retention_period: '5 Years', region: 'Global' },
-      { type_id: 201, category_id: 2, type_name: 'Disbursement Vouchers', retention_period: '10 Years', region: 'Global' },
-      { type_id: 202, category_id: 2, type_name: 'Payroll Registers', retention_period: '15 Years', region: 'Global' },
-      { type_id: 401, category_id: 4, type_name: 'Heritage Site Blueprints', retention_period: 'Permanent', region: 'Ilocos Region' },
-    ];
-  });
-
-  // Persist to LocalStorage
-  useEffect(() => { localStorage.setItem('dost_codex_cats', JSON.stringify(categories)); }, [categories]);
-  useEffect(() => { localStorage.setItem('dost_codex_types', JSON.stringify(types)); }, [types]);
-
-  // Actions
-  const addCategory = (cat) => setCategories([...categories, { ...cat, category_id: Date.now() }]);
-  const deleteCategory = (id) => setCategories(categories.filter(c => c.category_id !== id));
+  const { user } = useAuth(); // Depend on user auth state
+  const [categories, setCategories] = useState([]);
+  const [types, setTypes] = useState([]);
   
-  const addType = (type) => setTypes([...types, { ...type, type_id: Date.now() }]);
-  const deleteType = (id) => setTypes(types.filter(t => t.type_id !== id));
+  const getToken = () => localStorage.getItem('dost_token');
+
+  // 1. FETCH ALL DATA
+  const fetchData = async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      
+      console.log("Loading Codex Data..."); // Debug Log
+
+      const catRes = await fetch('http://localhost:5000/api/codex/categories', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const typeRes = await fetch('http://localhost:5000/api/codex/types', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (catRes.ok && typeRes.ok) {
+        const catData = await catRes.json();
+        const typeData = await typeRes.json();
+        setCategories(catData);
+        setTypes(typeData);
+        console.log("Codex Data Loaded:", catData.length, "categories");
+      }
+    } catch (err) { console.error("Codex Load Error:", err); }
+  };
+
+  // Trigger fetch when user logs in
+  useEffect(() => { 
+      if (user) fetchData(); 
+  }, [user]);
+
+  // 2. ADD CATEGORY (Wait for Server)
+  const addCategory = async (data) => {
+    const token = getToken();
+    const response = await fetch('http://localhost:5000/api/codex/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data)
+    });
+
+    if (response.ok) {
+        fetchData(); // Refresh from DB to confirm save
+        return true;
+    } else {
+        alert("Failed to save category. Check console.");
+        return false;
+    }
+  };
+
+  const deleteCategory = async (id) => {
+    const token = getToken();
+    await fetch(`http://localhost:5000/api/codex/categories/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    fetchData();
+  };
+
+  const addType = async (data) => {
+    const token = getToken();
+    const response = await fetch('http://localhost:5000/api/codex/types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(data)
+    });
+    
+    if (response.ok) {
+        fetchData(); 
+        return true;
+    }
+    return false;
+  };
+
+  const deleteType = async (id) => {
+    const token = getToken();
+    await fetch(`http://localhost:5000/api/codex/types/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    fetchData();
+  };
 
   return (
     <CodexContext.Provider value={{ categories, types, addCategory, deleteCategory, addType, deleteType }}>

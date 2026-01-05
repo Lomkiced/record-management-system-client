@@ -1,10 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
-import './index.css'; // ⬅️ The command to load your CSS goes HERE, in the JS file.
+import ErrorBoundary from './components/ErrorBoundary'; // Import it
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary> {/* Wrap App */}
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 )

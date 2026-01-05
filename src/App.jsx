@@ -1,26 +1,25 @@
 import React, { Suspense } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 
+// 1. IMPORT CONTEXTS
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CodexProvider } from './context/CodexContext';
 import { RegionProvider } from './context/RegionContext';
 import { RegistryProvider } from './context/RegistryContext';
-import MainLayout from './layouts/MainLayout';
-// Lazy Load Pages
-const Dashboard = React.lazy(() => import('./pages/dashboard/index'));
-const Registry = React.lazy(() => import('./pages/registry/RegistryList'));
-const Codex = React.lazy(() => import('./pages/registry/Codex'));
-const RegionManager = React.lazy(() => import('./pages/admin/RegionManager')); // <--- NEW PAGE
-const UserList = React.lazy(() => import('./pages/admin/UserList'));
-const AuditTrails = React.lazy(() => import('./pages/admin/AuditTrails'));
-const GlobalMap = React.lazy(() => import('./pages/admin/GlobalMap'));
-const Login = React.lazy(() => import('./pages/auth/Login'));
+import { UserProvider } from './context/UserContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
-};
+import MainLayout from './layouts/MainLayout';
+
+// Lazy Imports
+const Dashboard = React.lazy(() => import('./pages/dashboard/index'));
+// --- FIX: CHANGED 'RegistryList' TO 'Registry' ---
+const Registry = React.lazy(() => import('./pages/registry/Registry')); 
+const Codex = React.lazy(() => import('./pages/registry/Codex'));
+const RegionManager = React.lazy(() => import('./pages/super-admin/RegionManager'));
+const UserList = React.lazy(() => import('./pages/super-admin/UserList'));
+const AuditTrails = React.lazy(() => import('./pages/super-admin/AuditTrails'));
+const GlobalMap = React.lazy(() => import('./pages/super-admin/GlobalMap'));
+const Login = React.lazy(() => import('./pages/auth/Login'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -28,36 +27,52 @@ const PageLoader = () => (
   </div>
 );
 
+// --- PROTECTED ROUTE ---
+const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth(); 
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
 function App() {
   return (
     <AuthProvider>
-      <RegionProvider> 
+      <RegionProvider>
         <CodexProvider>
           <RegistryProvider>
-        <Router>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="registry" element={<Registry />} />
-                <Route path="codex" element={<Codex />} />
-                <Route path="regions" element={<RegionManager />} /> {/* <--- NEW ROUTE */}
-                <Route path="global-map" element={<GlobalMap />} />
-                <Route path="users" element={<UserList />} />
-                <Route path="audit" element={<AuditTrails />} />
-                <Route path="*" element={<div className="p-10">404 - Page Not Found</div>} />
-              </Route>
-            </Routes>
-          </Suspense>
-        </Router>
-        </RegistryProvider>
+            <UserProvider>
+            <Router>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={<Navigate to="/dashboard" replace />} />
+                    <Route path="dashboard" element={<Dashboard />} />
+                    
+                    {/* The Registry Route will now load the correct file */}
+                    <Route path="registry" element={<Registry />} />
+                    <Route path="codex" element={<Codex />} />
+                    
+                    <Route path="regions" element={<RegionManager />} />
+                    <Route path="global-map" element={<GlobalMap />} />
+                    <Route path="users" element={<UserList />} />
+                    <Route path="audit" element={<AuditTrails />} />
+                    
+                    <Route path="*" element={<div className="p-10">404 - Page Not Found</div>} />
+                  </Route>
+                </Routes>
+              </Suspense>
+            </Router>
+            </UserProvider>
+          </RegistryProvider>
         </CodexProvider>
       </RegionProvider>
     </AuthProvider>

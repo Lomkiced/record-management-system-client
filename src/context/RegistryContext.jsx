@@ -1,77 +1,123 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import * as api from '../services/endpoints/api'; // Import your optimized service
+import { useAuth } from './AuthContext';
 
 const RegistryContext = createContext();
 
 export const RegistryProvider = ({ children }) => {
-  // 1. INITIALIZE DATABASE (Load from Storage or Seed)
-  const [records, setRecords] = useState(() => {
-    const saved = localStorage.getItem('dost_registry_db');
-    // Seed data ONLY if storage is empty (First time run or cleared cache)
-    if (!saved) {
-      const initialData = [
-        { 
-          id: 'DOC-2024-001', 
-          title: 'Region 1 Financial Report', 
-          category: 'Financial Records', 
-          type_name: 'Annual Reports', 
-          status: 'Active', 
-          date: '2024-12-01', 
-          disposal_date: 'Permanent', // Matches Rule 101
-          region: 'Ilocos Region' 
-        },
-        { 
-          id: 'DOC-2024-002', 
-          title: 'Manila HQ Audit', 
-          category: 'Financial Records', 
-          type_name: 'Audit Logs', 
-          status: 'Active', 
-          date: '2024-11-20', 
-          disposal_date: '2029-11-20', // Calculated (5 Years)
-          region: 'National Capital Region' 
-        },
-      ];
-      return initialData;
-    }
-    return JSON.parse(saved);
-  });
-
-  // 2. PERSISTENCE LAYER (Auto-Save on Change)
-  useEffect(() => {
-    localStorage.setItem('dost_registry_db', JSON.stringify(records));
-  }, [records]);
-
-  // 3. DATABASE OPERATIONS (CRUD)
+  const { user } = useAuth();
   
-  const addRecord = (data) => {
-    const newRecord = {
-      ...data, // Spreads title, region, category, disposal_date from Form
-      id: `DOC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`, // Auto-generate ID
-      date: new Date().toISOString().split('T')[0], // Set Upload Date to Today
-      status: 'Active'
-    };
-    setRecords(prev => [newRecord, ...prev]); // Add to top of list
+  const [records, setRecords] = useState([]);
+  const [pagination, setPagination] = useState({ total: 0, current: 1, pages: 1 });
+  const [filters, setFilters] = useState({ search: '', category: 'All', page: 1, status: 'Active', region: '' });
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false); // New State for UI Loading
+
+  // 1. FETCH RECORDS
+  // Wrapped in useCallback to prevent infinite loops in useEffect
+  const fetchRecords = useCallback(async (overrideFilters = {}) => {
+    try {
+      setLoading(true);
+      
+      // Merge current filters with new ones
+      const activeFilters = { ...filters, ...overrideFilters };
+      setFilters(activeFilters);
+
+      // STRATEGY: Use the API Service (Centralized Logic)
+      // The API service now handles the token ('dost_token') automatically.
+      const result = await api.getRecords({
+          page: activeFilters.page || 1,
+          limit: 10,
+          search: activeFilters.search || '',
+          category: activeFilters.category || 'All',
+          status: activeFilters.status || 'Active',
+          region: activeFilters.region || '' 
+      });
+
+      if (result) {
+        setRecords(result.data || []);
+        setPagination(result.pagination || { total: 0, current: 1, pages: 1 });
+      }
+
+    } catch (err) {
+      console.error("Registry Load Error:", err);
+      // Optional: setRecords([]) on error if you want to clear the table
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]); // Dependencies
+
+  // Initial Load
+  useEffect(() => {
+     if (user) fetchRecords();
+  }, [user]); // Only run when user logs in/changes
+
+  // 2. UPLOAD RECORD (Strategic: Uses api.js)
+  const uploadRecord = async (formData) => {
+    setUploading(true);
+    try {
+      await api.createRecord(formData);
+      // Auto-refresh after success
+      await fetchRecords(); 
+      setUploading(false);
+      return true;
+    } catch (err) {
+      console.error("Upload Error:", err);
+      alert(err.response?.data?.message || "Upload Failed");
+      setUploading(false);
+      return false;
+    }
   };
 
-  const updateRecord = (id, updatedData) => {
-    setRecords(prev => prev.map(r => r.id === id ? { ...r, ...updatedData } : r));
+  // 3. UPDATE RECORD
+  const updateRecord = async (id, formData) => {
+    setUploading(true);
+    try {
+        await api.updateRecord(id, formData);
+        await fetchRecords();
+        setUploading(false);
+        return true;
+    } catch (err) {
+        console.error("Update Error:", err);
+        setUploading(false);
+        return false;
+    }
   };
 
-  const archiveRecord = (id) => {
-    setRecords(prev => prev.map(r => r.id === id ? { ...r, status: 'Archived' } : r));
+  // 4. ARCHIVE
+  const archiveRecord = async (id) => {
+    try {
+        await api.archiveRecord(id);
+        fetchRecords(); // Refresh list
+    } catch (err) { console.error(err); }
   };
 
-  const restoreRecord = (id) => {
-    setRecords(prev => prev.map(r => r.id === id ? { ...r, status: 'Active' } : r));
+  // 5. RESTORE
+  const restoreRecord = async (id) => {
+    try {
+        await api.restoreRecord(id);
+        fetchRecords();
+    } catch (err) { console.error(err); }
   };
 
-  const destroyRecord = (id) => {
-    setRecords(prev => prev.filter(r => r.id !== id));
+  // 6. DESTROY
+  const destroyRecord = async (id) => {
+    if(!window.confirm("WARNING: This will permanently delete the file. Undo is impossible.")) return;
+    try {
+        await api.deleteRecord(id);
+        fetchRecords();
+    } catch (err) { console.error(err); }
   };
 
   return (
     <RegistryContext.Provider value={{ 
       records, 
-      addRecord, 
+      pagination, 
+      filters, 
+      loading, 
+      uploading, // Export this so Modal can show a spinner
+      fetchRecords, 
+      uploadRecord, // Export renamed function
       updateRecord, 
       archiveRecord, 
       restoreRecord, 

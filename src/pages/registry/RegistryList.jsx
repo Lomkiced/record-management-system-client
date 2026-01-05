@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 
-// COMPONENTS
+// --- FIXED IMPORTS BASED ON SCREENSHOT ---
 import RecordForm from '../../components/registry/RecordForm';
 import RecordTable from '../../components/registry/RecordTable';
 import ViewRecordModal from '../../components/registry/ViewRecordModal';
 
-// CONTEXTS
 import { useAuth } from '../../context/AuthContext';
 import { useRegions } from '../../context/RegionContext';
-import { useRegistry } from '../../context/RegistryContext'; // <--- DB CONNECTION
+import { useRegistry } from '../../context/RegistryContext';
 
 const RegistryList = () => {
   const { user } = useAuth();
@@ -17,30 +16,24 @@ const RegistryList = () => {
   // CONSUME DATABASE ACTIONS
   const { records, addRecord, updateRecord, archiveRecord, restoreRecord, destroyRecord } = useRegistry();
   
-  // VIEW STATES
   const [currentTab, setCurrentTab] = useState('Active'); 
-  const [loading, setLoading] = useState(true); // Simulate load
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // FILTER STATE
   const [selectedRegionFilter, setSelectedRegionFilter] = useState(
     user.role === 'Super Admin' ? 'All' : user.region
   );
   
-  // MODAL STATES
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
 
-  // VIEW LOGIC: Filter Records for Display
-  // This runs on the client side to sort/filter the raw data from Context
+  // VIEW LOGIC
   const filteredRecords = records.filter(r => {
-    // 1. Search Logic
     const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           r.id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // 2. Security / Region Logic
     let matchesRegion = false;
     if (user.role === 'Super Admin') {
         matchesRegion = selectedRegionFilter === 'All' ? true : r.region === selectedRegionFilter;
@@ -48,25 +41,22 @@ const RegistryList = () => {
         matchesRegion = r.region === user.region;
     }
 
-    // 3. Tab Logic (Active vs Archived)
     const matchesTab = currentTab === 'Active' ? r.status !== 'Archived' : r.status === 'Archived';
 
     return matchesSearch && matchesRegion && matchesTab;
   });
 
-  // Simulate network delay for realism
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  // --- ACTIONS HANDLERS ---
-
+  // HANDLERS
   const handleSave = (data) => {
     if (editingRecord) {
-        updateRecord(editingRecord.id, data); // Call Context
+        updateRecord(editingRecord.id, data);
     } else {
-        addRecord(data); // Call Context
+        addRecord(data);
     }
     setIsModalOpen(false);
     setEditingRecord(null);
@@ -74,19 +64,19 @@ const RegistryList = () => {
 
   const handleArchive = (id) => {
     if(window.confirm("Archive this record? It will move to restricted storage.")) {
-        archiveRecord(id); // Call Context
+        archiveRecord(id);
     }
   };
 
   const handleRestore = (id) => {
     if(window.confirm("Restore this record to the active registry?")) {
-        restoreRecord(id); // Call Context
+        restoreRecord(id);
     }
   };
 
   const handleDestroy = (id) => {
     if(window.confirm("WARNING: This will permanently delete the record. Proceed?")) {
-        destroyRecord(id); // Call Context
+        destroyRecord(id);
     }
   };
 
@@ -106,8 +96,6 @@ const RegistryList = () => {
 
   return (
     <div className="h-[calc(100vh-2rem)] flex flex-col p-6 animate-fade-in">
-      
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6 shrink-0">
         <div>
           <div className="flex items-center gap-3">
@@ -131,7 +119,6 @@ const RegistryList = () => {
         </div>
       </div>
 
-      {/* CONTROLS */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center justify-between mb-6 shrink-0">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative w-full max-w-md">
@@ -160,7 +147,6 @@ const RegistryList = () => {
         )}
       </div>
 
-      {/* TABLE */}
       <div className="flex-1 bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm relative flex flex-col">
         <div className="flex-1 overflow-auto custom-scrollbar">
             {loading ? (
@@ -181,7 +167,6 @@ const RegistryList = () => {
         </div>
       </div>
 
-      {/* MODALS */}
       {isModalOpen && (
         <RecordForm 
           onClose={() => setIsModalOpen(false)} 
@@ -198,7 +183,6 @@ const RegistryList = () => {
           record={viewingRecord}
         />
       )}
-
     </div>
   );
 };
