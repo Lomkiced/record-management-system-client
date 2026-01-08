@@ -1,301 +1,325 @@
-import { useMemo, useState } from 'react';
-import { useRegions } from '../../context/RegionContext';
-import { useUsers } from '../../context/UserContext';
-import * as api from '../../services/endpoints/api';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 // --- ICONS ---
 const Icons = {
-  Folder: () => <svg className="w-16 h-16 text-indigo-400 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
-  FolderOpen: () => <svg className="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
-  User: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
-  Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
-  Ban: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>,
-  Check: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
-  Plus: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
-  Search: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>,
-  Home: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>,
-  ChevronRight: () => <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+  UserPlus: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3.75 13.5l2.25-1.125L9 10.875l3 1.5 2.25 1.125m-14.25 0V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-5.625" /></svg>,
+  Edit: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>,
+  Trash: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>,
+  Search: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>,
+  Badge: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>
 };
 
-const UserList = () => {
-  const { users, loading, refresh, getStats } = useUsers();
-  const { regions } = useRegions();
-  
-  // --- STATE ---
-  const [activeRoleFolder, setActiveRoleFolder] = useState(null); 
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // Modal State
+const UserManager = () => {
+  const { user } = useAuth(); // Contains { id, role, region_id }
+  const [users, setUsers] = useState([]);
+  const [regions, setRegions] = useState([]); 
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editUser, setEditUser] = useState(null);
-  const [formData, setFormData] = useState({ username: '', password: '', role: 'STAFF', region_id: '', office: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  // FORM STATE
+  const [formData, setFormData] = useState({ 
+    id: null, 
+    name: '',       
+    username: '',   
+    password: '', 
+    role: 'STAFF', 
+    office: '', 
+    region_id: '',
+    status: 'Active' 
+  });
+  const [isEditing, setIsEditing] = useState(false);
 
-  // --- DERIVED DATA ---
-  const counts = {
-    super: users.filter(u => u.role === 'SUPER_ADMIN').length,
-    admin: users.filter(u => u.role === 'REGIONAL_ADMIN').length,
-    staff: users.filter(u => u.role === 'STAFF').length
-  };
+  // --- 1. FETCH DATA ---
+  const fetchData = async () => {
+    try {
+        const token = localStorage.getItem('dost_token');
+        const headers = { 'Authorization': `Bearer ${token}` };
 
-  // --- SMART FILTERING (CRASH PROOF) ---
-  const filteredUsers = useMemo(() => {
-    if (!activeRoleFolder) return [];
+        // Fetch Users
+        const userRes = await fetch('http://localhost:5000/api/users', { headers });
+        if (userRes.ok) setUsers(await userRes.json());
 
-    return users.filter(user => {
-        const matchesRole = user.role === activeRoleFolder;
-        const searchStr = searchTerm.toLowerCase();
-        
-        // SAFE CHECKS: (val || '') prevents crash if data is missing
-        const matchesSearch = (user.username || '').toLowerCase().includes(searchStr) || 
-                              (user.name || '').toLowerCase().includes(searchStr) || 
-                              (user.dept || '').toLowerCase().includes(searchStr);
-        
-        return matchesRole && matchesSearch;
-    });
-  }, [users, activeRoleFolder, searchTerm]);
+        // Fetch Regions (Only if Super Admin)
+        if (user && user.role === 'SUPER_ADMIN') {
+             const regRes = await fetch('http://localhost:5000/api/regions', { headers });
+             if (regRes.ok) setRegions(await regRes.json());
+        }
 
-  // --- HANDLERS ---
-  const openCreate = () => {
-    setEditUser(null);
-    setFormData({ 
-        username: '', 
-        password: '', 
-        role: activeRoleFolder || 'STAFF', 
-        region_id: '', 
-        office: '' 
-    });
-    
-    if (activeRoleFolder === 'SUPER_ADMIN') {
-        const centralRegion = regions.find(r => r.id === 1 || r.name.includes('Central') || r.name.includes('National'));
-        setFormData(prev => ({ ...prev, region_id: centralRegion ? centralRegion.id : 1 }));
+    } catch (err) {
+        console.error("Data Load Error", err);
+    } finally {
+        setLoading(false);
     }
-    setIsModalOpen(true);
   };
 
-  const openEdit = (user) => {
-    setEditUser(user);
-    
-    // --- FIX: INTELLIGENT DATA SANITIZATION ---
-    // If region is "Global" (string) or empty, reset to '' for dropdown compatibility.
-    // Otherwise, use the numeric ID.
-    const safeRegionId = (user.region === 'Global' || !user.region) ? '' : user.region;
+  useEffect(() => { fetchData(); }, [user]);
 
-    setFormData({ 
-        username: user.username, 
-        password: '', 
-        role: user.role, 
-        region_id: safeRegionId, 
-        office: user.dept || '' // Map 'dept' back to 'office'
-    });
-    
-    setIsModalOpen(true);
-  };
-
-  const handleRoleChange = (e) => {
-    const newRole = e.target.value;
-    if (newRole === 'SUPER_ADMIN') {
-        const centralRegion = regions.find(r => r.id === 1 || r.name.includes('Central') || r.name.includes('National'));
-        setFormData(prev => ({ ...prev, role: newRole, region_id: centralRegion ? centralRegion.id : 1 }));
+  // --- 2. HANDLERS ---
+  const openModal = (targetUser = null) => {
+    if (targetUser) {
+        setFormData({ ...targetUser, password: '' }); 
+        setIsEditing(true);
     } else {
-        setFormData(prev => ({ ...prev, role: newRole }));
+        setFormData({ 
+            id: null, 
+            name: '', 
+            username: '', 
+            password: '', 
+            role: 'STAFF', 
+            office: '', 
+            region_id: user?.role === 'SUPER_ADMIN' ? '' : user?.region_id, 
+            status: 'Active' 
+        });
+        setIsEditing(false);
     }
+    setIsModalOpen(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    setIsSaving(true);
+    const token = localStorage.getItem('dost_token');
+    const url = isEditing ? `http://localhost:5000/api/users/${formData.user_id}` : 'http://localhost:5000/api/users';
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-        // --- FIX: STRICT PARSING ---
-        // Ensure we send a clean Number or Null to the backend
-        const regionValue = parseInt(formData.region_id);
-        const finalRegionId = isNaN(regionValue) ? null : regionValue;
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(formData)
+        });
 
-        const payload = { 
-            ...formData, 
-            region_id: finalRegionId
-        };
+        const data = await res.json();
 
-        if (editUser) {
-            await api.updateUser(editUser.id, payload);
+        if (res.ok) {
+            setIsModalOpen(false);
+            fetchData(); 
         } else {
-            await api.createUser(payload);
+            alert(data.message || "Operation failed.");
         }
-        setIsModalOpen(false);
-        refresh(); 
     } catch (err) {
-        // Safe error messaging
-        const msg = err.response?.data?.message || err.message || "Operation Failed";
-        alert(`Error: ${msg}`);
-    } finally { 
-        setIsSubmitting(false); 
+        console.error(err);
+        alert("Server connection error.");
+    } finally {
+        setIsSaving(false);
     }
   };
 
-  const toggleStatus = async (user) => {
-    if (!window.confirm(`Confirm action for ${user.username}?`)) return;
-    await api.updateUserStatus(user.id, user.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
-    refresh();
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure? This will remove access for this user.")) return;
+    const token = localStorage.getItem('dost_token');
+    try {
+        await fetch(`http://localhost:5000/api/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        fetchData();
+    } catch (err) {
+        alert("Delete failed");
+    }
   };
 
+  // --- 3. FILTERING ---
+  const filteredUsers = users.filter(u => 
+    (u.name || '').toLowerCase().includes(search.toLowerCase()) || 
+    (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u.role || '').toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div className="p-8 min-h-screen bg-slate-50/50 animate-fade-in flex flex-col gap-6">
+    <div className="p-8 min-h-screen flex flex-col gap-6 animate-fade-in bg-slate-50/50">
       
-      {/* 1. HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-end gap-6">
         <div>
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
-                <span className="text-indigo-600">User Management</span>
-            </h1>
-            <div className="flex items-center gap-2 mt-2 text-sm font-medium">
-                <button onClick={() => { setActiveRoleFolder(null); setSearchTerm(''); }} className={`flex items-center gap-1 hover:text-indigo-600 transition-colors ${!activeRoleFolder ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}>
-                    <Icons.Home /> Directory
-                </button>
-                {activeRoleFolder && (
-                    <>
-                        <Icons.ChevronRight />
-                        <span className="text-indigo-600 font-bold px-2 py-0.5 bg-indigo-50 rounded-md border border-indigo-100 flex items-center gap-2">
-                            <Icons.FolderOpen />
-                            {activeRoleFolder.replace('_', ' ')}
-                        </span>
-                    </>
-                )}
-            </div>
+          <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+             <span className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200"><Icons.Badge /></span> 
+             Workforce Management
+          </h1>
+          <p className="text-slate-500 mt-2 text-sm font-medium">
+            Manage system access, roles, and personnel assignments.
+          </p>
         </div>
-        <button onClick={openCreate} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 active:scale-95 transition-all">
-            <Icons.Plus /> {activeRoleFolder ? `New ${activeRoleFolder.replace('_', ' ')}` : 'Add New User'}
-        </button>
+
+        <div className="flex gap-3">
+             <div className="relative group">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500"><Icons.Search /></div>
+                <input 
+                    type="text" 
+                    placeholder="Search directory..." 
+                    className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none w-64 shadow-sm transition-all"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+             </div>
+             <button onClick={() => openModal()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 text-sm font-bold active:scale-95">
+                <Icons.UserPlus /> Onboard User
+             </button>
+        </div>
       </div>
 
-      {/* 2. DIRECTORY FOLDERS */}
-      {!activeRoleFolder && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in-up">
-            
-            <div onClick={() => setActiveRoleFolder('SUPER_ADMIN')} className="bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-200 p-8 rounded-2xl flex flex-col items-center cursor-pointer transition-all shadow-sm hover:shadow-xl group">
-                <div className="mb-4 transform group-hover:scale-110 transition-transform duration-300 text-purple-400"><Icons.Folder /></div>
-                <h3 className="font-bold text-slate-800 text-lg">Super Administrators</h3>
-                <span className="text-xs font-bold text-purple-500 bg-purple-100 px-3 py-1 rounded-full mt-2">{counts.super} Users</span>
-            </div>
-
-            <div onClick={() => setActiveRoleFolder('REGIONAL_ADMIN')} className="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 p-8 rounded-2xl flex flex-col items-center cursor-pointer transition-all shadow-sm hover:shadow-xl group">
-                <div className="mb-4 transform group-hover:scale-110 transition-transform duration-300 text-blue-400"><Icons.Folder /></div>
-                <h3 className="font-bold text-slate-800 text-lg">Regional Admins</h3>
-                <span className="text-xs font-bold text-blue-500 bg-blue-100 px-3 py-1 rounded-full mt-2">{counts.admin} Users</span>
-            </div>
-
-            <div onClick={() => setActiveRoleFolder('STAFF')} className="bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 p-8 rounded-2xl flex flex-col items-center cursor-pointer transition-all shadow-sm hover:shadow-xl group">
-                <div className="mb-4 transform group-hover:scale-110 transition-transform duration-300 text-emerald-400"><Icons.Folder /></div>
-                <h3 className="font-bold text-slate-800 text-lg">Staff Members</h3>
-                <span className="text-xs font-bold text-emerald-500 bg-emerald-100 px-3 py-1 rounded-full mt-2">{counts.staff} Users</span>
-            </div>
-        </div>
-      )}
-
-      {/* 3. USER TABLE */}
-      {activeRoleFolder && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col animate-fade-in">
-            <div className="p-4 border-b border-slate-100 flex gap-4 bg-slate-50/50">
-                <div className="relative flex-1 max-w-md">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Search /></div>
-                    <input 
-                        type="text" 
-                        placeholder={`Search ${activeRoleFolder.toLowerCase().replace('_', ' ')}s...`} 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none"
-                    />
-                </div>
-            </div>
-
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-xs uppercase text-slate-500 font-bold border-b border-slate-100">
-                        <tr>
-                            <th className="px-6 py-4">User Identity</th>
-                            <th className="px-6 py-4">Office / Assignment</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4 text-right">Actions</th>
+      {/* TABLE */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+        <div className="overflow-x-auto">
+            <table className="w-full text-left">
+                <thead className="bg-slate-50 text-[11px] uppercase text-slate-500 font-bold tracking-widest border-b border-slate-100">
+                    <tr>
+                        <th className="px-6 py-4">Employee Profile</th>
+                        <th className="px-6 py-4">Role & Access</th>
+                        <th className="px-6 py-4">Office / Unit</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                    {filteredUsers.map(u => (
+                        <tr key={u.user_id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm ${u.role.includes('ADMIN') ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-emerald-400 to-teal-500'}`}>
+                                        {(u.name || u.username).charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-700 text-sm">{u.name || 'No Name Set'}</p>
+                                        <p className="text-xs text-slate-400 font-mono">@{u.username}</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border ${u.role.includes('ADMIN') ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+                                    {u.role.replace('_', ' ')}
+                                </span>
+                                {u.region_name && <p className="text-[10px] text-slate-400 mt-1">{u.region_name}</p>}
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className="text-xs font-medium text-slate-600">{u.office || 'Unassigned'}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <span className={`flex items-center gap-1.5 text-xs font-bold ${u.status === 'Active' ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                                    {u.status}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => openModal(u)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Icons.Edit /></button>
+                                <button onClick={() => handleDelete(u.user_id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Icons.Trash /></button>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {loading ? <tr><td colSpan="4" className="p-10 text-center text-slate-400">Loading...</td></tr> : 
-                         filteredUsers.length === 0 ? <tr><td colSpan="4" className="p-10 text-center text-slate-400">Folder is empty.</td></tr> :
-                         filteredUsers.map(user => (
-                            <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
-                                            {user.username ? user.username.charAt(0).toUpperCase() : '?'}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-slate-700">{user.name}</p>
-                                            <p className="text-xs text-slate-400">{user.email || 'No Email'}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="block font-bold text-xs text-slate-800 uppercase">{user.dept || 'No Office'}</span>
-                                    <span className="text-xs text-slate-500">{regions.find(r => r.id == user.region)?.name || 'Global'}</span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${user.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
-                                        {user.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex justify-end gap-1">
-                                        <button onClick={() => openEdit(user)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"><Icons.Edit /></button>
-                                        <button onClick={() => toggleStatus(user)} className={`p-2 rounded-lg ${user.status === 'ACTIVE' ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
-                                            {user.status === 'ACTIVE' ? <Icons.Ban /> : <Icons.Check />}
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                    ))}
+                    {filteredUsers.length === 0 && !loading && (
+                        <tr><td colSpan="5" className="text-center py-12 text-slate-400 text-sm italic">No records found matching your query.</td></tr>
+                    )}
+                </tbody>
+            </table>
         </div>
-      )}
+      </div>
 
       {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-zoom-in">
-                <h2 className="text-xl font-bold text-slate-800 mb-6">{editUser ? 'Edit User' : `Create ${formData.role.replace('_', ' ')}`}</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-zoom-in">
+                
+                {/* Modal Header */}
+                <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
                     <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase">Username</label>
-                        <input className="w-full border p-3 rounded-xl mt-1 font-bold outline-none focus:border-indigo-500" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} required />
+                        <h2 className="text-lg font-bold text-slate-800">{isEditing ? 'Update Personnel' : 'Onboard New User'}</h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Fill in the details below to grant system access.</p>
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase">Password {editUser && '(Leave blank to keep)'}</label>
-                        <input className="w-full border p-3 rounded-xl mt-1 outline-none focus:border-indigo-500" type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required={!editUser} />
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-8 space-y-5">
+                    
+                    {/* 1. Identity Section (Full Name vs Username) */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Name <span className="text-red-500">*</span></label>
+                            <input 
+                                required 
+                                placeholder="e.g. Engr. Juan Dela Cruz"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                                value={formData.name} 
+                                onChange={e => setFormData({...formData, name: e.target.value})} 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Username <span className="text-red-500">*</span></label>
+                            <input 
+                                required 
+                                disabled={isEditing} 
+                                placeholder="e.g. jdelacruz"
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-60" 
+                                value={formData.username} 
+                                onChange={e => setFormData({...formData, username: e.target.value})} 
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password {isEditing && '(Optional)'}</label>
+                            <input 
+                                type="password" 
+                                required={!isEditing} 
+                                placeholder="••••••••"
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                                value={formData.password} 
+                                onChange={e => setFormData({...formData, password: e.target.value})} 
+                            />
+                        </div>
                     </div>
+
+                    <hr className="border-slate-100" />
+
+                    {/* 2. Assignment Section */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase">Role</label>
-                            <select className="w-full border p-3 rounded-xl mt-1 bg-white outline-none focus:border-indigo-500" value={formData.role} onChange={handleRoleChange}>
-                                <option value="STAFF">Staff</option>
-                                <option value="REGIONAL_ADMIN">Regional Admin</option>
-                                <option value="SUPER_ADMIN">Super Admin</option>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Role</label>
+                            <select 
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500/20" 
+                                value={formData.role} 
+                                onChange={e => setFormData({...formData, role: e.target.value})}
+                            >
+                                <option value="STAFF">Staff Member</option>
+                                <option value="ADMIN">Regional Admin</option>
+                                {user?.role === 'SUPER_ADMIN' && <option value="SUPER_ADMIN">Super Admin</option>}
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase">Region</label>
-                            <select className={`w-full border p-3 rounded-xl mt-1 outline-none ${formData.role === 'SUPER_ADMIN' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white focus:border-indigo-500'}`} value={formData.region_id} onChange={e => setFormData({...formData, region_id: e.target.value})} required disabled={formData.role === 'SUPER_ADMIN'}>
-                                <option value="">Select...</option>
-                                {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                            </select>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Office / Unit</label>
+                            <input 
+                                required 
+                                placeholder="e.g. Finance Div."
+                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" 
+                                value={formData.office} 
+                                onChange={e => setFormData({...formData, office: e.target.value})} 
+                            />
                         </div>
+                        
+                        {/* Only show Region Selector if Super Admin */}
+                        {user?.role === 'SUPER_ADMIN' && (
+                            <div className="col-span-2">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Region</label>
+                                <select 
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500/20" 
+                                    value={formData.region_id} 
+                                    onChange={e => setFormData({...formData, region_id: e.target.value})}
+                                >
+                                    <option value="">Select Region...</option>
+                                    {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                </select>
+                            </div>
+                        )}
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase">Office / Unit</label>
-                        <input className="w-full border p-3 rounded-xl mt-1 outline-none focus:border-indigo-500" value={formData.office} onChange={e => setFormData({...formData, office: e.target.value})} placeholder="e.g. Finance" />
-                    </div>
-                    <div className="flex gap-3 pt-4">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 bg-slate-100 font-bold rounded-xl text-slate-600 hover:bg-slate-200">Cancel</button>
-                        <button type="submit" disabled={isSubmitting} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-200 disabled:opacity-70">{isSubmitting ? 'Saving...' : 'Save User'}</button>
+
+                    <div className="pt-4 flex gap-3">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
+                        <button 
+                            type="submit" 
+                            disabled={isSaving}
+                            className={`flex-1 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 transition-all ${isSaving ? 'opacity-70 cursor-wait' : ''}`}
+                        >
+                            {isSaving ? 'Saving...' : 'Confirm & Save'}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -305,4 +329,4 @@ const UserList = () => {
   );
 };
 
-export default UserList;
+export default UserManager;
