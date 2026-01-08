@@ -64,17 +64,26 @@ const Sidebar = () => {
     
     // --- ADMIN MENU (Defined once, used for ADMIN and REGIONAL_ADMIN) ---
     const ADMIN_MENU = [
-      { category: 'Regional Command', items: [
-          { path: '/dashboard', label: 'Dashboard', icon: Icons.Dashboard }
-      ]},
-      { category: 'Governance', items: [
-          { path: '/registry', label: 'Regional Registry', icon: Icons.Folder },
-          { path: '/codex', label: 'Policy Codex', icon: Icons.Book }
-      ]},
-      { category: 'Workforce', items: [
-          // This is the button you were missing
-          { path: '/users', label: 'Unit Staff', icon: Icons.Users } 
-      ]}
+      {
+        category: "Regional Command",
+        items: [
+          { path: "/dashboard", label: "Dashboard", icon: Icons.Dashboard },
+        ],
+      },
+      {
+        category: "Governance",
+        items: [
+          { path: "/registry", label: "Regional Registry", icon: Icons.Folder },
+          { path: "/codex", label: "Policy Codex", icon: Icons.Book },
+        ],
+      },
+      {
+        category: "Workforce",
+        items: [
+          { path: "/users", label: "Unit Staff", icon: Icons.Users },
+          { path: "/audit", label: "Audit Logs", icon: Icons.Shield },
+        ],
+      },
     ];
 
     const ROLE_MENUS = {
