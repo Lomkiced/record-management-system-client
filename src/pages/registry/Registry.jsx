@@ -6,6 +6,7 @@ import { useCodex } from '../../context/CodexContext';
 import { useRegions } from '../../context/RegionContext';
 import { useRegistry } from '../../context/RegistryContext';
 
+// --- VISUAL ASSETS ---
 const Icons = {
   RegionFolder: () => <svg className="w-24 h-24 text-blue-500 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
   CodexFolder: () => <svg className="w-20 h-20 text-amber-400 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
@@ -41,7 +42,7 @@ const Registry = () => {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [selectedRestrictedRecord, setSelectedRestrictedRecord] = useState(null);
 
-  // --- SMART SECURITY FILTER ---
+  // --- 🔒 SMART SECURITY FILTER ---
   const visibleRegions = regions.filter(region => {
     const isSuperAdmin = user?.role === 'SUPER_ADMIN';
     const isAssigned = region.id == user?.region_id; 
@@ -49,25 +50,46 @@ const Registry = () => {
     return (isSuperAdmin || isAssigned) && matchesSearch;
   });
 
+  // --- DATA REFRESHER ---
   const handleOperationSuccess = () => {
     setIsModalOpen(false);
     setRecordToEdit(null);
     if (activeRegion && activeCategory) {
-        fetchRecords({ region: activeRegion.id, category: activeCategory.name, page: 1, status: viewMode });
+        fetchRecords({ 
+            region: activeRegion.id, 
+            category: activeCategory.name, 
+            page: 1, 
+            status: viewMode 
+        });
     }
   };
 
-  const enterRegion = (region) => { setActiveRegion(region); setActiveCategory(null); setSearchTerm(''); };
+  // 1. CLICK REGION
+  const enterRegion = (region) => {
+    setActiveRegion(region);
+    setActiveCategory(null);
+    setSearchTerm('');
+  };
+
+  // 2. CLICK CATEGORY
   const enterCategory = (category) => {
     if (!activeRegion) return; 
     setActiveCategory(category);
     setViewMode('Active');
-    fetchRecords({ region: activeRegion.id, category: category.name, page: 1, status: 'Active' });
+    
+    fetchRecords({ 
+        region: activeRegion.id, 
+        category: category.name, 
+        page: 1, 
+        status: 'Active' 
+    });
   };
 
+  // 3. NAVIGATION
   const goToRoot = () => { setActiveRegion(null); setActiveCategory(null); setSearchTerm(''); };
   const goToRegion = () => { setActiveCategory(null); setSearchTerm(''); };
 
+  // 4. HELPERS
   const getVisibleCategories = () => {
     if (!activeRegion) return [];
     return categories.filter(cat => cat.region === 'Global' || cat.region === activeRegion.name);
@@ -76,30 +98,41 @@ const Registry = () => {
   const toggleViewMode = (mode) => {
     if (!activeRegion || !activeCategory) return;
     setViewMode(mode);
-    fetchRecords({ region: activeRegion.id, category: activeCategory.name, page: 1, status: mode });
-  };
-
-  // --- VIEW LOGIC ---
-  const handleViewFile = (record) => {
-    if (record.is_restricted) {
-        setSelectedRestrictedRecord(record);
-        setPasswordModalOpen(true);
-    } else {
-        window.open(`http://localhost:5000/uploads/${record.file_path}`, '_blank');
-    }
-  };
-
-  const handleUnlockSuccess = (filePath) => {
-    window.open(`http://localhost:5000/uploads/${filePath}`, '_blank');
+    fetchRecords({ 
+        region: activeRegion.id, 
+        category: activeCategory.name, 
+        page: 1, 
+        status: mode 
+    });
   };
 
   const handleEdit = (rec) => { setRecordToEdit(rec); setIsModalOpen(true); };
   const handleCloseModal = () => { setIsModalOpen(false); setRecordToEdit(null); };
 
+  // --- 🔒 SECURE VIEW LOGIC (UPDATED) ---
+  const handleViewFile = (record) => {
+    if (record.is_restricted) {
+        // If Restricted -> Open Password Modal
+        setSelectedRestrictedRecord(record);
+        setPasswordModalOpen(true);
+    } else {
+        // If Open -> Stream directly via Gatekeeper (no token needed for public files if logic allows, or unrestricted)
+        const url = `http://localhost:5000/api/records/download/${record.file_path}`;
+        window.open(url, '_blank');
+    }
+  };
+
+  const handleUnlockSuccess = (filePath, accessToken) => {
+    // Unlocked -> Stream via Gatekeeper WITH Token
+    const url = `http://localhost:5000/api/records/download/${filePath}?token=${accessToken}`;
+    window.open(url, '_blank');
+  };
+
   const getRetentionBadge = (disposalDate) => {
       if (!disposalDate) return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-600 border border-indigo-200">PERMANENT</span>;
       const days = Math.ceil((new Date(disposalDate) - new Date()) / (1000 * 60 * 60 * 24));
       if (days < 0) return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-600 border border-red-200">EXPIRED</span>;
+      if (days < 60) return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-600 border border-amber-200">EXPIRING</span>;
       return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">{(days / 365).toFixed(1)} Years</span>;
   };
 
@@ -113,66 +146,83 @@ const Registry = () => {
              <span className="text-indigo-600">Registry</span>
           </h1>
           <div className="flex items-center gap-2 mt-2 text-sm font-medium">
-             <button onClick={goToRoot} className={`flex items-center gap-1 hover:text-indigo-600 transition-colors ${!activeRegion ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}><Icons.Home /> National</button>
+             <button onClick={goToRoot} className={`flex items-center gap-1 hover:text-indigo-600 transition-colors ${!activeRegion ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}>
+               <Icons.Home /> National
+             </button>
              {activeRegion && (
                <>
                  <Icons.ChevronRight />
-                 <button onClick={goToRegion} className={`flex items-center gap-1 hover:text-indigo-600 transition-colors ${!activeCategory ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}>{activeRegion.name}</button>
+                 <button onClick={goToRegion} className={`flex items-center gap-1 hover:text-indigo-600 transition-colors ${!activeCategory ? 'text-indigo-600 font-bold' : 'text-slate-500'}`}>
+                   {activeRegion.name}
+                 </button>
                </>
              )}
              {activeCategory && (
                <>
                  <Icons.ChevronRight />
-                 <span className="text-indigo-600 font-bold px-2 py-0.5 bg-indigo-50 rounded-md border border-indigo-100">{activeCategory.name}</span>
+                 <span className="text-indigo-600 font-bold px-2 py-0.5 bg-indigo-50 rounded-md border border-indigo-100">
+                   {activeCategory.name}
+                 </span>
                </>
              )}
           </div>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 font-bold text-sm flex items-center gap-2 active:scale-95 transition-all"><Icons.Plus /> Upload Record</button>
+        <button onClick={() => setIsModalOpen(true)} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 font-bold text-sm flex items-center gap-2 active:scale-95 transition-all">
+          <Icons.Plus /> Upload Record
+        </button>
       </div>
 
-      {/* VIEW LAYERS */}
+      {/* --- LEVEL 0: ROOT --- */}
       {!activeRegion && (
         <div className="animate-fade-in-up">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Regional Vaults</h3>
+            <div className="mb-6 relative max-w-md">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Search /></div>
+                <input type="text" placeholder="Search regional office..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none shadow-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Select Regional Office</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {visibleRegions.map((region) => (
                     <div key={region.id} onClick={() => enterRegion(region)} className="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 p-8 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all shadow-sm hover:shadow-xl group">
                         <div className="transition-transform duration-300 group-hover:-translate-y-2 group-hover:scale-110 mb-4"><Icons.RegionFolder /></div>
                         <h3 className="font-bold text-slate-700 text-lg">{region.name}</h3>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Regional Vault</span>
                     </div>
                 ))}
-                {visibleRegions.length === 0 && <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-xl"><p className="text-slate-400 font-bold">No access.</p></div>}
+                {visibleRegions.length === 0 && (
+                    <div className="col-span-full py-12 text-center border-2 border-dashed border-slate-200 rounded-xl"><p className="text-slate-400 font-bold">No authorized regional folders found.</p></div>
+                )}
             </div>
         </div>
       )}
 
+      {/* --- LEVEL 1: FOLDERS --- */}
       {activeRegion && !activeCategory && (
         <div className="animate-fade-in-up">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Classification Folders</h3>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Select Classification Series</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {getVisibleCategories().map((cat) => (
                     <div key={cat.category_id} onClick={() => enterCategory(cat)} className="bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-200 p-8 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all shadow-sm hover:shadow-xl group">
                         <div className="transition-transform duration-300 group-hover:-translate-y-2 group-hover:scale-110 mb-4"><Icons.CodexFolder /></div>
                         <h3 className="font-bold text-slate-700 text-lg">{cat.name}</h3>
+                        <div className="flex gap-2 mt-2"><span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 bg-slate-100 rounded-full text-slate-500">{cat.region}</span></div>
                     </div>
                 ))}
-                {getVisibleCategories().length === 0 && <div className="col-span-full py-20 text-center text-slate-400 italic">No folders here.</div>}
+                {getVisibleCategories().length === 0 && <div className="col-span-full py-20 text-center text-slate-400 italic">No folders available.</div>}
             </div>
         </div>
       )}
 
-      {/* TABLE */}
+      {/* --- LEVEL 2: FILES --- */}
       {activeRegion && activeCategory && (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col animate-fade-in">
           <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center bg-slate-50/50 gap-4">
              <div className="relative w-full max-w-md">
                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Search /></div>
-               <input type="text" placeholder="Search..." className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+               <input type="text" placeholder="Search within this folder..." className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
              </div>
              <div className="flex bg-slate-200 p-1 rounded-lg">
-                <button onClick={() => toggleViewMode('Active')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'Active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Active</button>
-                <button onClick={() => toggleViewMode('Archived')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'Archived' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500'}`}>Archived</button>
+                <button onClick={() => toggleViewMode('Active')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'Active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Active Files</button>
+                <button onClick={() => toggleViewMode('Archived')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${viewMode === 'Archived' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Icons.Archive /> Vault</button>
              </div>
           </div>
           <div className="overflow-x-auto flex-1">
@@ -181,28 +231,35 @@ const Registry = () => {
                 <tr><th className="px-6 py-4">Document</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {records.length === 0 ? (<tr><td colSpan="3" className="p-20 text-center text-slate-400">Empty.</td></tr>) 
+                {loading ? ([...Array(3)].map((_, i) => <tr key={i} className="animate-pulse"><td colSpan="3" className="px-6 py-4"><div className="h-10 bg-slate-100 rounded"></div></td></tr>)) 
+                : records.length === 0 ? (<tr><td colSpan="3" className="p-20 text-center text-slate-400">Folder is empty.</td></tr>) 
                 : (records.map((r) => (
-                    <tr key={r.record_id} className="transition-colors hover:bg-indigo-50/30 group">
+                    <tr key={r.record_id} className={`transition-colors group ${viewMode === 'Archived' ? 'bg-slate-50/50 grayscale' : 'hover:bg-indigo-50/30'}`}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${r.is_restricted ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'}`}>
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${viewMode === 'Archived' ? 'bg-slate-200 text-slate-500' : (r.is_restricted ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600')}`}>
                               {r.is_restricted ? <Icons.Lock /> : <Icons.File />}
                           </div>
                           <div>
-                            <p className={`font-bold text-sm ${r.is_restricted ? 'text-red-700' : 'text-slate-800'}`}>{r.title}</p>
+                            <p className={`font-bold text-sm group-hover:text-indigo-600 transition-colors ${r.is_restricted ? 'text-red-700' : 'text-slate-800'}`}>{r.title}</p>
                             <div className="flex gap-2 mt-1"><span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 uppercase">{r.type_name}</span>{getRetentionBadge(r.disposal_date)}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-bold text-slate-500">{r.status}</td>
+                      <td className="px-6 py-4 text-sm font-bold text-slate-500">{viewMode === 'Active' ? 'Active' : 'Archived'}</td>
                       <td className="px-6 py-4 text-right flex justify-end gap-2">
-                          <button onClick={() => handleViewFile(r)} className="text-slate-400 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50" title="View"><Icons.Eye /></button>
-                          {viewMode === 'Active' && <button onClick={() => handleEdit(r)} className="text-slate-400 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50"><Icons.Pencil /></button>}
-                          {viewMode === 'Active' ? 
-                            <button onClick={() => archiveRecord(r.record_id)} className="text-slate-400 hover:text-amber-600 p-2 rounded-lg hover:bg-amber-50"><Icons.Archive /></button> :
-                            <button onClick={() => restoreRecord(r.record_id)} className="text-slate-400 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50"><Icons.Refresh /></button>
-                          }
+                          {viewMode === 'Active' ? (
+                            <>
+                                <button onClick={() => handleViewFile(r)} className="text-slate-400 hover:text-indigo-600 p-2 rounded-lg hover:bg-indigo-50" title="View"><Icons.Eye /></button>
+                                <button onClick={() => handleEdit(r)} className="text-slate-400 hover:text-blue-600 p-2 rounded-lg hover:bg-blue-50"><Icons.Pencil /></button>
+                                <button onClick={() => archiveRecord(r.record_id)} className="text-slate-400 hover:text-amber-600 p-2 rounded-lg hover:bg-amber-50"><Icons.Archive /></button>
+                            </>
+                          ) : (
+                            <>
+                                <button onClick={() => restoreRecord(r.record_id)} className="text-slate-400 hover:text-emerald-600 p-2 rounded-lg hover:bg-emerald-50"><Icons.Refresh /></button>
+                                <button onClick={() => destroyRecord(r.record_id)} className="text-slate-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50"><Icons.Trash /></button>
+                            </>
+                          )}
                       </td>
                     </tr>
                   ))
@@ -210,10 +267,17 @@ const Registry = () => {
               </tbody>
             </table>
           </div>
+          <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+            <div className="text-xs text-slate-500">Page {pagination.current} of {pagination.pages}</div>
+            <div className="flex gap-2">
+              <button disabled={pagination.current === 1} onClick={() => fetchRecords({ page: pagination.current - 1, region: activeRegion?.id, category: activeCategory?.name, status: viewMode })} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-50">Prev</button>
+              <button disabled={pagination.current === pagination.pages} onClick={() => fetchRecords({ page: pagination.current + 1, region: activeRegion?.id, category: activeCategory?.name, status: viewMode })} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-50">Next</button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* MODALS */}
+      {/* --- MODALS --- */}
       <RecordModal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal} 
