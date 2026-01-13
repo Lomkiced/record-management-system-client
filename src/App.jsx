@@ -1,81 +1,131 @@
-import React, { Suspense } from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
-
-// 1. IMPORT CONTEXTS
+import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CodexProvider } from './context/CodexContext';
 import { RegionProvider } from './context/RegionContext';
 import { RegistryProvider } from './context/RegistryContext';
 import { UserProvider } from './context/UserContext';
-
 import MainLayout from './layouts/MainLayout';
 
-// Lazy Imports
-const Dashboard = React.lazy(() => import('./pages/dashboard/index'));
-// --- FIX: CHANGED 'RegistryList' TO 'Registry' ---
-const Registry = React.lazy(() => import('./pages/registry/Registry')); 
-const Codex = React.lazy(() => import('./pages/registry/Codex'));
-const RegionManager = React.lazy(() => import('./pages/super-admin/RegionManager'));
-const UserList = React.lazy(() => import('./pages/super-admin/UserList'));
-const AuditTrails = React.lazy(() => import('./pages/super-admin/AuditTrails'));
-const GlobalMap = React.lazy(() => import('./pages/super-admin/GlobalMap'));
-const Login = React.lazy(() => import('./pages/auth/Login'));
+// Pages
+import Login from './pages/auth/Login';
+import AdminDashboard from './pages/dashboard/AdminDashboard';
+import StaffDashboard from './pages/dashboard/StaffDashboard';
+import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
+import Codex from './pages/registry/Codex';
+import Registry from './pages/registry/Registry';
+import AuditTrails from './pages/super-admin/AuditTrails';
+import GlobalMap from './pages/super-admin/GlobalMap';
+import RegionManager from './pages/super-admin/RegionManager';
+import UserList from './pages/super-admin/UserList';
 
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-screen bg-gray-50">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  </div>
-);
+// --- SECURITY COMPONENT: PROTECTED ROUTE ---
+// This ensures users can only access routes allowed for their role
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-// --- PROTECTED ROUTE ---
-const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth(); 
-  
+  if (loading) return <div className="h-screen w-full flex items-center justify-center bg-slate-50 text-slate-400">Loading Access...</div>;
+
+  // 1. Not Logged In? -> Go to Login
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
+
+  // 2. Role Not Allowed? -> Go to their assigned Dashboard (Safety Net)
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    if (user.role === 'SUPER_ADMIN') return <Navigate to="/super-admin" replace />;
+    if (user.role === 'REGIONAL_ADMIN') return <Navigate to="/admin" replace />;
+    if (user.role === 'STAFF') return <Navigate to="/staff" replace />;
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };
 
 function App() {
   return (
-    <AuthProvider>
-      <RegionProvider>
-        <CodexProvider>
-          <RegistryProvider>
-            <UserProvider>
-            <Router>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <MainLayout />
-                    </ProtectedRoute>
-                  }>
-                    <Route index element={<Navigate to="/dashboard" replace />} />
-                    <Route path="dashboard" element={<Dashboard />} />
-                    
-                    {/* The Registry Route will now load the correct file */}
-                    <Route path="registry" element={<Registry />} />
-                    <Route path="codex" element={<Codex />} />
-                    
-                    <Route path="regions" element={<RegionManager />} />
-                    <Route path="global-map" element={<GlobalMap />} />
-                    <Route path="users" element={<UserList />} />
-                    <Route path="audit" element={<AuditTrails />} />
-                    
-                    <Route path="*" element={<div className="p-10">404 - Page Not Found</div>} />
-                  </Route>
-                </Routes>
-              </Suspense>
-            </Router>
-            </UserProvider>
-          </RegistryProvider>
-        </CodexProvider>
-      </RegionProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RegistryProvider>
+          <RegionProvider>
+            <CodexProvider>
+              <UserProvider>
+                <Router>
+                  <Routes>
+                    {/* Public Route */}
+                    <Route path="/login" element={<Login />} />
+
+                    {/* Protected Application Routes */}
+                    <Route path="/" element={<MainLayout />}>
+                      
+                      {/* 1. SUPER ADMIN ROUTES */}
+                      <Route path="super-admin" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                          <SuperAdminDashboard />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="global-map" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                          <GlobalMap />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="users" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                          <UserList />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="regions" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                          <RegionManager />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="audit" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                          <AuditTrails />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* 2. REGIONAL ADMIN ROUTES */}
+                      <Route path="admin" element={
+                        <ProtectedRoute allowedRoles={['REGIONAL_ADMIN', 'SUPER_ADMIN']}>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* 3. STAFF ROUTES */}
+                      <Route path="staff" element={
+                        <ProtectedRoute allowedRoles={['STAFF', 'REGIONAL_ADMIN', 'SUPER_ADMIN']}>
+                          <StaffDashboard />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* 4. SHARED ROUTES (Accessible by all logged in) */}
+                      <Route path="registry" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'REGIONAL_ADMIN', 'STAFF']}>
+                          <Registry />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="codex" element={
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'REGIONAL_ADMIN', 'STAFF']}>
+                          <Codex />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Default Fallback: Redirect to Login */}
+                      <Route index element={<Navigate to="/login" replace />} />
+                    </Route>
+
+                    {/* Catch All */}
+                    <Route path="*" element={<Navigate to="/login" replace />} />
+                  </Routes>
+                </Router>
+              </UserProvider>
+            </CodexProvider>
+          </RegionProvider>
+        </RegistryProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
