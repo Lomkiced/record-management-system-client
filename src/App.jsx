@@ -19,8 +19,7 @@ import GlobalMap from './pages/super-admin/GlobalMap';
 import RegionManager from './pages/super-admin/RegionManager';
 import UserList from './pages/super-admin/UserList';
 
-// --- SECURITY COMPONENT: PROTECTED ROUTE ---
-// This ensures users can only access routes allowed for their role
+// --- SECURITY COMPONENT ---
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -32,12 +31,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 2. Role Not Allowed? -> Go to their assigned Dashboard (Safety Net)
+  // 2. Role Not Allowed? -> Redirect to appropriate dashboard
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    console.warn(`Access Denied. User Role: ${user.role} | Allowed: ${allowedRoles}`);
     if (user.role === 'SUPER_ADMIN') return <Navigate to="/super-admin" replace />;
-    if (user.role === 'REGIONAL_ADMIN') return <Navigate to="/admin" replace />;
+    if (user.role === 'REGIONAL_ADMIN' || user.role === 'ADMIN') return <Navigate to="/admin" replace />;
     if (user.role === 'STAFF') return <Navigate to="/staff" replace />;
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -86,33 +86,33 @@ function App() {
                         </ProtectedRoute>
                       } />
 
-                      {/* 2. REGIONAL ADMIN ROUTES */}
+                      {/* 2. REGIONAL ADMIN ROUTES (FIXED: Added 'ADMIN') */}
                       <Route path="admin" element={
-                        <ProtectedRoute allowedRoles={['REGIONAL_ADMIN', 'SUPER_ADMIN']}>
+                        <ProtectedRoute allowedRoles={['REGIONAL_ADMIN', 'ADMIN', 'SUPER_ADMIN']}>
                           <AdminDashboard />
                         </ProtectedRoute>
                       } />
 
                       {/* 3. STAFF ROUTES */}
                       <Route path="staff" element={
-                        <ProtectedRoute allowedRoles={['STAFF', 'REGIONAL_ADMIN', 'SUPER_ADMIN']}>
+                        <ProtectedRoute allowedRoles={['STAFF', 'REGIONAL_ADMIN', 'ADMIN', 'SUPER_ADMIN']}>
                           <StaffDashboard />
                         </ProtectedRoute>
                       } />
 
-                      {/* 4. SHARED ROUTES (Accessible by all logged in) */}
+                      {/* 4. SHARED ROUTES (FIXED: Added 'ADMIN') */}
                       <Route path="registry" element={
-                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'REGIONAL_ADMIN', 'STAFF']}>
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'REGIONAL_ADMIN', 'ADMIN', 'STAFF']}>
                           <Registry />
                         </ProtectedRoute>
                       } />
                       <Route path="codex" element={
-                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'REGIONAL_ADMIN', 'STAFF']}>
+                        <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'REGIONAL_ADMIN', 'ADMIN', 'STAFF']}>
                           <Codex />
                         </ProtectedRoute>
                       } />
 
-                      {/* Default Fallback: Redirect to Login */}
+                      {/* Default Fallback */}
                       <Route index element={<Navigate to="/login" replace />} />
                     </Route>
 
