@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBranding } from '../context/BrandingContext';
 
-// --- ICONS (Preserved) ---
+// ... (KEEP YOUR ICONS OBJECT EXACTLY AS IT IS) ...
 const Icons = {
   Dashboard: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>,
   Globe: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12h19.5M12 2.25a15.75 15.75 0 010 19.5M12 2.25a15.75 15.75 0 000 19.5" /></svg>,
@@ -20,84 +20,45 @@ const Icons = {
   Logout: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>,
 };
 
-// --- INTERACTIVE NAV ITEM (Uses Dynamic Branding) ---
-const NavItem = ({ item, isCollapsed, isActive, branding }) => {
-  return (
-    <div className="relative group my-1">
-      {/* Active Indicator: Uses Brand Color */}
-      <div 
-        className={`absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-lg transition-all duration-300 ${
-          isActive 
-            ? 'opacity-100 scale-y-100' 
-            : 'bg-transparent opacity-0 scale-y-50'
-        }`}
-        style={{ backgroundColor: isActive ? branding.primaryColor : 'transparent', boxShadow: isActive ? `0 0 15px ${branding.primaryColor}` : 'none' }}
-      />
-
-      <div
-        className={`
-          relative flex items-center 
-          ${isCollapsed ? 'justify-center w-12 h-12 mx-auto' : 'px-4 py-3.5 mx-3'}
-          rounded-xl transition-all duration-300 cursor-pointer overflow-hidden
-          ${isActive ? 'text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-white/5 hover:translate-x-1'}
-        `}
-        style={isActive ? {
-            background: `linear-gradient(to right, ${branding.primaryColor}33, ${branding.secondaryColor}1a)`, // 33=20%, 1a=10% opacity
-            borderColor: `${branding.primaryColor}33`
-        } : {}}
-      >
-        {!isActive && <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />}
-
-        <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'group-hover:scale-110'}`} style={{ color: isActive ? branding.primaryColor : 'inherit' }}>
-          <item.icon className="w-5 h-5" />
-        </span>
-
-        {!isCollapsed && (
-          <span className="relative z-10 ml-3 text-sm font-medium tracking-wide truncate transition-colors duration-300">
-            {item.label}
-          </span>
-        )}
-      </div>
-
-      {isCollapsed && (
-        <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800/90 backdrop-blur-md text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 pointer-events-none whitespace-nowrap z-[100]">
-          {item.label}
-          <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
-        </div>
-      )}
+// --- NAV ITEM ---
+const NavItem = ({ item, isCollapsed, isActive, branding }) => (
+  <div className="relative group my-1">
+    <div 
+      className={`absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-lg transition-all duration-300 ${isActive ? 'opacity-100 scale-y-100' : 'bg-transparent opacity-0 scale-y-50'}`}
+      style={{ backgroundColor: isActive ? branding.primaryColor : 'transparent', boxShadow: isActive ? `0 0 15px ${branding.primaryColor}` : 'none' }}
+    />
+    <div
+      className={`relative flex items-center ${isCollapsed ? 'justify-center w-12 h-12 mx-auto' : 'px-4 py-3.5 mx-3'} rounded-xl transition-all duration-300 cursor-pointer overflow-hidden ${isActive ? 'text-white shadow-inner' : 'text-slate-400 hover:text-white hover:bg-white/5 hover:translate-x-1'}`}
+      style={isActive ? { background: `linear-gradient(to right, ${branding.primaryColor}33, ${branding.secondaryColor}1a)`, borderColor: `${branding.primaryColor}33` } : {}}
+    >
+      {!isActive && <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />}
+      <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} style={{ color: isActive ? branding.primaryColor : 'inherit' }}>
+        <item.icon className="w-5 h-5" />
+      </span>
+      {!isCollapsed && <span className="relative z-10 ml-3 text-sm font-medium tracking-wide truncate transition-colors duration-300">{item.label}</span>}
     </div>
-  );
-};
+    {isCollapsed && (
+      <div className="absolute left-full top-1/2 -translate-y-1/2 ml-4 px-3 py-1.5 bg-slate-800/90 backdrop-blur-md text-white text-xs font-bold rounded-lg shadow-xl border border-slate-700 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 pointer-events-none whitespace-nowrap z-[100]">
+        {item.label}
+        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45 border-l border-b border-slate-700"></div>
+      </div>
+    )}
+  </div>
+);
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
-  const { branding } = useBranding(); // <--- BRANDING HOOK
+  const { branding } = useBranding(); 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuItems = useMemo(() => {
     if (!user) return [];
     
+    // Define Menu Structure
     const ADMIN_MENU = [
-      {
-        category: "Regional Command",
-        items: [
-          { path: "/admin", label: "Regional Dashboard", icon: Icons.Dashboard }, 
-        ],
-      },
-      {
-        category: "Governance",
-        items: [
-          { path: "/registry", label: "Regional Registry", icon: Icons.Folder },
-          { path: "/codex", label: "Policy Codex", icon: Icons.Book },
-        ],
-      },
-      {
-        category: "Workforce",
-        items: [
-          { path: "/users", label: "Unit Staff", icon: Icons.Users },
-          { path: "/audit", label: "Audit Logs", icon: Icons.Shield },
-        ],
-      },
+      { category: "Regional Command", items: [{ path: "/admin", label: "Regional Dashboard", icon: Icons.Dashboard }] },
+      { category: "Governance", items: [{ path: "/registry", label: "Regional Registry", icon: Icons.Folder }, { path: "/codex", label: "Policy Codex", icon: Icons.Book }] },
+      { category: "Workforce", items: [{ path: "/users", label: "Unit Staff", icon: Icons.Users }, { path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
     ];
 
     const ROLE_MENUS = {
@@ -120,20 +81,9 @@ const Sidebar = () => {
   if (!user) return null;
 
   return (
-    <aside 
-      className={`
-        ${isCollapsed ? 'w-[5.5rem]' : 'w-72'} 
-        h-screen sticky top-0
-        bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0B1120] to-black
-        border-r border-slate-800/50 backdrop-blur-xl
-        flex flex-col 
-        transition-all duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)]
-        z-50 shadow-2xl shadow-black ring-1 ring-white/5
-      `}
-    >
-      {/* --- HEADER (DYNAMIC BRANDING) --- */}
+    <aside className={`${isCollapsed ? 'w-[5.5rem]' : 'w-72'} h-screen sticky top-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0B1120] to-black border-r border-slate-800/50 backdrop-blur-xl flex flex-col transition-all duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)] z-50 shadow-2xl shadow-black ring-1 ring-white/5`}>
+      {/* HEADER */}
       <div className="h-24 flex items-center justify-center relative border-b border-slate-800/50 bg-gradient-to-b from-white/5 to-transparent">
-        {/* Expanded Header */}
         <div className={`flex items-center gap-3 transition-all duration-500 ${isCollapsed ? 'opacity-0 scale-90 hidden' : 'opacity-100 scale-100'}`}>
           <div className="relative group">
             <div className="absolute -inset-1 rounded-lg blur opacity-40 group-hover:opacity-75 transition duration-200" style={{ background: `linear-gradient(to right, ${branding.primaryColor}, ${branding.secondaryColor})` }}></div>
@@ -150,8 +100,6 @@ const Sidebar = () => {
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.25em] mt-1 pl-0.5 truncate w-32">Enterprise</p>
           </div>
         </div>
-
-        {/* Collapsed Header */}
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ${isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}>
            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border border-slate-700/50 flex items-center justify-center shadow-lg shadow-blue-500/10 overflow-hidden">
              {branding.logoUrl ? (
@@ -161,86 +109,40 @@ const Sidebar = () => {
              )}
            </div>
         </div>
-
-        {/* Floating Toggle Button */}
-        <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 bg-slate-900 border border-slate-700 text-slate-400 rounded-full flex items-center justify-center hover:text-white transition-all z-50 group"
-          style={{ borderColor: 'rgba(255,255,255,0.1)' }}
-        >
+        <button onClick={() => setIsCollapsed(!isCollapsed)} className="absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 bg-slate-900 border border-slate-700 text-slate-400 rounded-full flex items-center justify-center hover:text-white transition-all z-50 group" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
           {isCollapsed ? <Icons.ChevronRight className="w-4 h-4 group-hover:scale-110 transition-transform" /> : <Icons.ChevronLeft className="w-4 h-4 group-hover:scale-110 transition-transform" />}
         </button>
       </div>
 
-      {/* --- SCROLLABLE NAVIGATION --- */}
+      {/* NAVIGATION */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-6 space-y-8 custom-scrollbar scroll-smooth">
         {menuItems.map((section, idx) => (
           <div key={idx} className="group/section">
-            {!isCollapsed && (
-              <h3 className="px-7 mb-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-fade-in transition-colors" style={{ color: 'inherit' }}>
-                {section.category}
-              </h3>
-            )}
-            
+            {!isCollapsed && <h3 className="px-7 mb-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-fade-in transition-colors">{section.category}</h3>}
             <div className="space-y-1">
               {section.items.map((item) => (
                 <NavLink key={item.path} to={item.path}>
-                  {({ isActive }) => (
-                    <NavItem item={item} isCollapsed={isCollapsed} isActive={isActive} branding={branding} />
-                  )}
+                  {({ isActive }) => <NavItem item={item} isCollapsed={isCollapsed} isActive={isActive} branding={branding} />}
                 </NavLink>
               ))}
             </div>
-            
-            {isCollapsed && idx !== menuItems.length - 1 && (
-              <div className="my-4 mx-auto w-8 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
-            )}
+            {isCollapsed && idx !== menuItems.length - 1 && <div className="my-4 mx-auto w-8 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>}
           </div>
         ))}
       </div>
 
-      {/* --- FOOTER (USER DOCK) --- */}
+      {/* USER DOCK */}
       <div className="p-4 border-t border-slate-800/50 bg-[#05080F]/50 backdrop-blur-sm">
-        <div className={`
-           relative
-           bg-slate-900/40 border border-white/5 rounded-2xl p-3 
-           transition-all duration-300 hover:border-slate-600 hover:bg-slate-800/80 hover:shadow-lg
-           group cursor-pointer overflow-hidden
-           ${isCollapsed ? 'justify-center' : ''} flex items-center gap-3
-        `}>
+        <div className={`relative bg-slate-900/40 border border-white/5 rounded-2xl p-3 transition-all duration-300 hover:border-slate-600 hover:bg-slate-800/80 hover:shadow-lg group cursor-pointer overflow-hidden ${isCollapsed ? 'justify-center' : ''} flex items-center gap-3`}>
            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `linear-gradient(to right, ${branding.primaryColor}1a, transparent)` }} />
-
            <div className={`relative shrink-0 transition-all duration-300 ${isCollapsed ? 'group-hover:opacity-0' : ''}`}>
              <div className="w-10 h-10 rounded-full p-[2px] shadow-lg" style={{ background: `linear-gradient(to bottom right, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
-               <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white">
-                 {user.username?.charAt(0).toUpperCase() || 'U'}
-               </div>
+               <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white">{user.username?.charAt(0).toUpperCase() || 'U'}</div>
              </div>
              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></span>
            </div>
-
-           {!isCollapsed && (
-             <div className="flex-1 min-w-0 relative z-10">
-               <p className="text-sm font-bold text-white truncate group-hover:text-blue-200 transition-colors">{user.username}</p>
-               <p className="text-[10px] text-slate-400 truncate uppercase font-bold tracking-wider">
-                 {user.role === 'ADMIN' ? 'Regional Admin' : user.role.replace('_', ' ')}
-               </p>
-             </div>
-           )}
-
-           <button 
-             onClick={logout} 
-             title="Logout"
-             className={`
-               text-slate-400 hover:text-red-400 transition-all duration-300 z-20
-               ${isCollapsed 
-                 ? 'absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-slate-900/90 backdrop-blur-sm rounded-2xl' 
-                 : 'opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0'
-               }
-             `}
-           >
-             <Icons.Logout className="w-5 h-5 hover:scale-110 transition-transform" />
-           </button>
+           {!isCollapsed && <div className="flex-1 min-w-0 relative z-10"><p className="text-sm font-bold text-white truncate group-hover:text-blue-200 transition-colors">{user.username}</p><p className="text-[10px] text-slate-400 truncate uppercase font-bold tracking-wider">{user.role === 'ADMIN' ? 'Regional Admin' : user.role.replace('_', ' ')}</p></div>}
+           <button onClick={logout} title="Logout" className={`text-slate-400 hover:text-red-400 transition-all duration-300 z-20 ${isCollapsed ? 'absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-slate-900/90 backdrop-blur-sm rounded-2xl' : 'opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0'}`}><Icons.Logout className="w-5 h-5 hover:scale-110 transition-transform" /></button>
         </div>
       </div>
     </aside>

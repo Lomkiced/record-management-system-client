@@ -6,7 +6,7 @@ import { useBranding } from '../../context/BrandingContext';
 
 const Login = () => {
   const { login } = useAuth();
-  const { branding } = useBranding(); // <--- Branding Hook
+  const { branding, refreshBranding } = useBranding(); // Get refresh function
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({ username: '', password: '' });
@@ -14,6 +14,11 @@ const Login = () => {
   const [status, setStatus] = useState('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [scanProgress, setScanProgress] = useState(0);
+
+  // FORCE REFRESH BRANDING ON MOUNT (Fixes Stale Data)
+  useEffect(() => {
+    refreshBranding();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,11 +71,11 @@ const Login = () => {
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-[#0a0f1c] font-sans overflow-hidden">
       
-      {/* --- DYNAMIC BACKGROUND (Uses Branding Colors) --- */}
+      {/* BACKGROUND EFFECTS */}
       <div className="absolute inset-0 z-0">
         <div 
             className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] rounded-full blur-[150px] animate-pulse duration-[4000ms]" 
-            style={{ backgroundColor: `${branding.primaryColor}20` }} // 20 = low opacity
+            style={{ backgroundColor: `${branding.primaryColor}20` }} 
         />
         <div 
             className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full blur-[150px] animate-pulse delay-1000 duration-[5000ms]" 
@@ -81,14 +86,7 @@ const Login = () => {
       </div>
 
       <div className="relative z-10 w-full max-w-[400px] perspective-1000">
-        <div className={`
-            relative overflow-hidden
-            bg-slate-900/60 backdrop-blur-2xl 
-            border border-slate-700/50 
-            rounded-3xl shadow-2xl shadow-black/50
-            transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]
-            ${status === 'success' ? 'h-[400px]' : 'min-h-[480px]'}
-        `}>
+        <div className={`relative overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-slate-700/50 rounded-3xl shadow-2xl shadow-black/50 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${status === 'success' ? 'h-[400px]' : 'min-h-[480px]'}`}>
             
             {/* LOGIN FORM */}
             <div className={`absolute inset-0 p-8 flex flex-col justify-center transition-all duration-500 ${status === 'success' ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}>
@@ -110,9 +108,7 @@ const Login = () => {
                     <div className="space-y-1.5 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1" style={{ color: status === 'loading' ? 'inherit' : branding.primaryColor }}>Username</label>
                         <div className="relative">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                                <User size={18} />
-                            </div>
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"> <User size={18} /> </div>
                             <input 
                                 type="text" required 
                                 className="w-full bg-slate-950/50 border border-slate-800 rounded-xl py-4 pl-12 pr-4 text-white placeholder-slate-700 outline-none transition-all font-medium focus:ring-2"
@@ -126,9 +122,7 @@ const Login = () => {
                     <div className="space-y-1.5 group">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1" style={{ color: status === 'loading' ? 'inherit' : branding.primaryColor }}>Passcode</label>
                         <div className="relative">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                                <Lock size={18} />
-                            </div>
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"> <Lock size={18} /> </div>
                             <input 
                                 type={showPassword ? "text" : "password"} required 
                                 className="w-full bg-slate-950/50 border border-slate-800 rounded-xl py-4 pl-12 pr-12 text-white placeholder-slate-700 outline-none transition-all font-medium focus:ring-2 tracking-widest"
@@ -149,12 +143,8 @@ const Login = () => {
                         </div>
                     )}
 
-                    <button 
-                        type="submit" disabled={status === 'loading'}
-                        className="w-full relative group overflow-hidden rounded-xl bg-slate-800 p-[1px] transition-all active:scale-[0.98]"
-                    >
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" 
-                             style={{ background: `linear-gradient(to right, ${branding.primaryColor}, ${branding.secondaryColor})` }} />
+                    <button type="submit" disabled={status === 'loading'} className="w-full relative group overflow-hidden rounded-xl bg-slate-800 p-[1px] transition-all active:scale-[0.98]">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `linear-gradient(to right, ${branding.primaryColor}, ${branding.secondaryColor})` }} />
                         <div className="relative h-full w-full bg-slate-900 group-hover:bg-opacity-0 rounded-[11px] px-8 py-4 transition-all">
                             <div className="flex items-center justify-center gap-2">
                                 {status === 'loading' ? (
@@ -184,8 +174,7 @@ const Login = () => {
                 <div className="space-y-2 text-center w-64">
                     <h3 className="text-lg font-bold text-white tracking-tight">Identity Verified</h3>
                     <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div className="h-full transition-all duration-300 ease-out" 
-                             style={{ width: `${scanProgress}%`, background: `linear-gradient(to right, ${branding.secondaryColor}, ${branding.primaryColor})` }} />
+                        <div className="h-full transition-all duration-300 ease-out" style={{ width: `${scanProgress}%`, background: `linear-gradient(to right, ${branding.secondaryColor}, ${branding.primaryColor})` }} />
                     </div>
                     <p className="text-[10px] font-mono mt-1 animate-pulse" style={{ color: branding.primaryColor }}>
                         {scanProgress < 100 ? 'DECRYPTING ACCESS KEYS...' : 'ACCESS GRANTED'}

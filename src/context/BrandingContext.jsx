@@ -9,37 +9,50 @@ export const BrandingProvider = ({ children }) => {
     welcomeMsg: 'Sign in to access the system.',
     logoUrl: null,
     loginBgUrl: null,
-    primaryColor: '#4f46e5',    // Indigo-600
-    secondaryColor: '#0f172a'   // Slate-900
+    primaryColor: '#4f46e5',
+    secondaryColor: '#0f172a'
   });
   const [loading, setLoading] = useState(true);
 
+  // Apply Theme Colors
   const applyTheme = (brandData) => {
+    if (!brandData) return;
     const root = document.documentElement;
-    // Inject CSS Variables for instant theming
-    root.style.setProperty('--color-primary', brandData.primary_color || '#4f46e5');
-    root.style.setProperty('--color-secondary', brandData.secondary_color || '#0f172a');
+    root.style.setProperty('--color-primary', brandData.primaryColor);
+    root.style.setProperty('--color-secondary', brandData.secondaryColor);
   };
 
   const loadBrand = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/settings');
+      // 🛡️ TIMESTAMP FIX: Forces browser to ignore old cache
+      const timestamp = new Date().getTime();
+      const res = await fetch(`http://localhost:5000/api/settings?t=${timestamp}`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      
+      if (!res.ok) throw new Error("Failed to fetch settings");
+
       const data = await res.json();
       
       if (data) {
-        applyTheme(data); // <--- Apply CSS Variables
-        setBranding({
-          systemName: data.system_name,
-          orgName: data.org_name,
-          welcomeMsg: data.welcome_msg,
-          logoUrl: data.logo_url ? `http://localhost:5000${data.logo_url}` : null,
-          loginBgUrl: data.login_bg_url ? `http://localhost:5000${data.login_bg_url}` : null,
-          primaryColor: data.primary_color,
-          secondaryColor: data.secondary_color
-        });
+        const getUrl = (path) => path ? `http://localhost:5000${path}` : null;
+        
+        const newBrand = {
+          systemName: data.system_name || 'DOST-RMS',
+          orgName: data.org_name || 'Department of Science and Technology',
+          welcomeMsg: data.welcome_msg || 'Sign in to access the system.',
+          // Append timestamp to images so they refresh instantly
+          logoUrl: getUrl(data.logo_url) ? `${getUrl(data.logo_url)}?t=${timestamp}` : null,
+          loginBgUrl: getUrl(data.login_bg_url) ? `${getUrl(data.login_bg_url)}?t=${timestamp}` : null,
+          primaryColor: data.primary_color || '#4f46e5',
+          secondaryColor: data.secondary_color || '#0f172a'
+        };
+
+        setBranding(newBrand);
+        applyTheme(newBrand);
       }
     } catch (err) {
-      console.error("Failed to load branding:", err);
+      console.error("Branding Load Error:", err);
     } finally {
       setLoading(false);
     }
