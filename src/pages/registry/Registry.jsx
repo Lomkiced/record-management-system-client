@@ -8,7 +8,7 @@ import { useCodex } from '../../context/CodexContext';
 import { useRegions } from '../../context/RegionContext';
 import { useRegistry } from '../../context/RegistryContext';
 
-// --- ICONS & ASSETS ---
+// --- ICONS ---
 const Icons = {
   Home: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>,
   ChevronRight: () => <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>,
@@ -16,11 +16,10 @@ const Icons = {
   Plus: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
   X: () => <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
   Folder: () => <svg className="w-12 h-12 text-blue-500 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
-  Codex: () => <svg className="w-10 h-10 text-amber-400 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
-  Filter: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+  Codex: () => <svg className="w-10 h-10 text-amber-400 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>
 };
 
-// --- SKELETON LOADERS ---
+// --- SKELETONS ---
 const GridSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
     {[...Array(4)].map((_, i) => (
@@ -52,50 +51,57 @@ const Registry = () => {
   const { categories } = useCodex();
   const { regions } = useRegions();
   
-  // STATE
   const [activeRegion, setActiveRegion] = useState(null);
   const [activeCategory, setActiveCategory] = useState(null);
   const [viewMode, setViewMode] = useState('Active');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // MODALS
+  // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState(null);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [selectedRestrictedRecord, setSelectedRestrictedRecord] = useState(null);
   
-  // VIEWER
+  // Viewer
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerUrl, setViewerUrl] = useState('');
   const [viewerFile, setViewerFile] = useState(null);
 
-  // --- SEARCH LOGIC ---
+  // --- 1. REACTIVE FETCH (THE FIX) ---
+  // We removed 'fetchRecords' from the dependency array to stop the infinite loop.
+  // We also removed explicit calls in handlers; updating state is enough.
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-        fetchRecords({ 
-            region: activeRegion ? activeRegion.id : '', 
-            category: activeCategory ? activeCategory.name : 'All', 
-            page: 1, 
-            status: viewMode,
-            search: searchTerm 
-        });
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, activeRegion, activeCategory, viewMode]);
+    // Only fetch if we are in a valid state to show data
+    const shouldFetch = (activeRegion && activeCategory) || searchTerm.length > 0;
+    
+    if (shouldFetch) {
+        const delayDebounceFn = setTimeout(() => {
+            fetchRecords({ 
+                region: activeRegion ? activeRegion.id : '', 
+                category: activeCategory ? activeCategory.name : 'All', 
+                page: 1, 
+                status: viewMode,
+                search: searchTerm 
+            });
+        }, 300); // 300ms debounce
 
-  // NAVIGATION
+        return () => clearTimeout(delayDebounceFn);
+    }
+  }, [searchTerm, activeRegion, activeCategory, viewMode]); // <--- NO fetchRecords here
+
+  // Navigation Handlers (Just update state, let useEffect handle fetch)
   const enterRegion = (region) => { setActiveRegion(region); setActiveCategory(null); setSearchTerm(''); };
-  const enterCategory = (category) => {
-    if (!activeRegion) return; 
-    setActiveCategory(category);
-    setViewMode('Active');
-    setSearchTerm(''); 
+  const enterCategory = (category) => { 
+      if (!activeRegion) return; 
+      setActiveCategory(category); 
+      setViewMode('Active'); 
+      setSearchTerm(''); 
   };
-
   const goToRoot = () => { setActiveRegion(null); setActiveCategory(null); setSearchTerm(''); };
   const goToRegion = () => { setActiveCategory(null); setSearchTerm(''); };
+  const toggleViewMode = (mode) => setViewMode(mode);
 
-  // FILTERS
+  // Data Filters
   const visibleRegions = regions.filter(region => {
     const isSuperAdmin = user?.role === 'SUPER_ADMIN';
     const isAssigned = region.id == user?.region_id; 
@@ -107,13 +113,11 @@ const Registry = () => {
     return categories.filter(cat => cat.region === 'Global' || cat.region === activeRegion.name);
   };
 
-  const toggleViewMode = (mode) => setViewMode(mode);
-
-  // ACTIONS
+  // Actions
   const handleArchive = async (id) => {
-    if (window.confirm("Archive this record? It will be moved to the Archived tab.")) {
+    if (window.confirm("Archive this record?")) {
         await archiveRecord(id);
-        // Quick refresh
+        // Manual refresh needed here because state didn't change
         fetchRecords({ region: activeRegion?.id, category: activeCategory?.name, page: 1, status: viewMode, search: searchTerm });
     }
   };
@@ -150,32 +154,23 @@ const Registry = () => {
   return (
     <div className="p-6 lg:p-10 min-h-screen bg-slate-50/50 flex flex-col gap-8 font-sans selection:bg-indigo-100 selection:text-indigo-700">
       
-      {/* --- TOP BAR --- */}
+      {/* HEADER */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 animate-fade-in-down">
         <div className="space-y-2">
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">Registry<span className="text-indigo-600">.</span></h1>
           
-          {/* INTERACTIVE BREADCRUMBS */}
           <nav className="flex items-center gap-2 text-sm font-medium bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm w-fit">
-             <button 
-                onClick={goToRoot} 
-                className={`flex items-center gap-1.5 transition-colors ${!activeRegion ? 'text-slate-800 font-bold' : 'text-slate-400 hover:text-indigo-600'}`}
-             >
+             <button onClick={goToRoot} className={`flex items-center gap-1.5 transition-colors ${!activeRegion ? 'text-slate-800 font-bold' : 'text-slate-400 hover:text-indigo-600'}`}>
                 <Icons.Home /> <span>National</span>
              </button>
-             
              {activeRegion && (
                <>
                  <Icons.ChevronRight />
-                 <button 
-                    onClick={goToRegion} 
-                    className={`flex items-center gap-1 transition-colors ${!activeCategory ? 'text-slate-800 font-bold' : 'text-slate-400 hover:text-indigo-600'}`}
-                 >
+                 <button onClick={goToRegion} className={`flex items-center gap-1 transition-colors ${!activeCategory ? 'text-slate-800 font-bold' : 'text-slate-400 hover:text-indigo-600'}`}>
                     {activeRegion.name}
                  </button>
                </>
              )}
-             
              {activeCategory && (
                <>
                  <Icons.ChevronRight />
@@ -187,10 +182,7 @@ const Registry = () => {
           </nav>
         </div>
 
-        <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="group relative overflow-hidden px-6 py-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-xl shadow-slate-200 transition-all active:scale-95"
-        >
+        <button onClick={() => setIsModalOpen(true)} className="group relative overflow-hidden px-6 py-3 bg-slate-900 hover:bg-indigo-600 text-white rounded-xl shadow-xl shadow-slate-200 transition-all active:scale-95">
             <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
             <div className="relative flex items-center gap-2 font-bold text-sm">
                 <Icons.Plus /> <span>New Record</span>
@@ -198,17 +190,11 @@ const Registry = () => {
         </button>
       </div>
 
-      {/* --- SEARCH & FILTER BAR --- */}
+      {/* TOOLBAR */}
       <div className="sticky top-4 z-20 bg-white/80 backdrop-blur-xl p-2 rounded-2xl shadow-sm border border-white/50 flex flex-col md:flex-row justify-between items-center gap-4 animate-fade-in">
          <div className="relative w-full md:max-w-md group">
            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"><Icons.Search /></div>
-           <input 
-             type="text" 
-             placeholder="Search by title, ID, or tag..." 
-             className="w-full pl-11 pr-10 py-3 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-slate-400" 
-             value={searchTerm} 
-             onChange={(e) => setSearchTerm(e.target.value)} 
-           />
+           <input type="text" placeholder="Search records..." className="w-full pl-11 pr-10 py-3 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-slate-400" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
            {searchTerm && (
                <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-all">
                    <Icons.X />
@@ -216,15 +202,10 @@ const Registry = () => {
            )}
          </div>
 
-         {/* View Toggles */}
          {showTable && (
              <div className="flex bg-slate-100 p-1.5 rounded-xl self-end md:self-auto">
                 {['Active', 'Archived'].map((mode) => (
-                    <button 
-                        key={mode}
-                        onClick={() => toggleViewMode(mode)} 
-                        className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === mode ? 'bg-white text-slate-800 shadow-sm scale-105' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
+                    <button key={mode} onClick={() => toggleViewMode(mode)} className={`px-5 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === mode ? 'bg-white text-slate-800 shadow-sm scale-105' : 'text-slate-500 hover:text-slate-700'}`}>
                         {mode}
                     </button>
                 ))}
@@ -232,10 +213,10 @@ const Registry = () => {
          )}
       </div>
 
-      {/* --- CONTENT AREA --- */}
+      {/* CONTENT */}
       <div className="min-h-[400px]">
           
-          {/* 1. REGION GRID */}
+          {/* FOLDERS */}
           {!activeRegion && !searchTerm && (
             <div className="animate-fade-in-up">
                 <div className="flex items-center gap-2 mb-6">
@@ -252,7 +233,6 @@ const Registry = () => {
                                     <Icons.Folder />
                                 </div>
                                 <h3 className="font-bold text-slate-700 text-lg group-hover:text-blue-700">{region.name}</h3>
-                                <p className="text-xs text-slate-400 mt-1 font-medium">Click to open</p>
                             </div>
                         ))}
                     </div>
@@ -260,7 +240,6 @@ const Registry = () => {
             </div>
           )}
 
-          {/* 2. CATEGORY GRID */}
           {activeRegion && !activeCategory && !searchTerm && (
             <div className="animate-fade-in-up">
                 <div className="flex items-center gap-2 mb-6">
@@ -277,7 +256,6 @@ const Registry = () => {
                                     <Icons.Codex />
                                 </div>
                                 <h3 className="font-bold text-slate-700 text-lg group-hover:text-amber-700">{cat.name}</h3>
-                                <p className="text-xs text-slate-400 mt-1 font-medium">{cat.description || "System Folder"}</p>
                             </div>
                         ))}
                     </div>
@@ -285,12 +263,10 @@ const Registry = () => {
             </div>
           )}
 
-          {/* 3. DATA TABLE */}
+          {/* TABLE */}
           {showTable && (
-            <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col animate-fade-in relative">
-              {loading && (
-                  <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm p-4"><TableSkeleton /></div>
-              )}
+            <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col animate-fade-in relative min-h-[300px]">
+              {loading && <div className="absolute inset-0 z-10 bg-white/80 backdrop-blur-sm p-4"><TableSkeleton /></div>}
               
               <div className="overflow-x-auto">
                 <RecordTable 
@@ -304,33 +280,18 @@ const Registry = () => {
                 />
               </div>
 
-              {/* PAGINATION FOOTER */}
-              <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Showing {records.length} records • Page {pagination.current} of {pagination.pages}
-                </span>
+              {/* PAGINATION */}
+              <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex justify-between items-center gap-4">
+                <span className="text-xs font-bold text-slate-400 uppercase">Page {pagination.current} of {pagination.pages}</span>
                 <div className="flex items-center gap-2">
-                  <button 
-                    disabled={pagination.current === 1} 
-                    onClick={() => fetchRecords({ page: pagination.current - 1, region: activeRegion?.id, category: activeCategory?.name, status: viewMode, search: searchTerm })} 
-                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-400 transition-colors shadow-sm"
-                  >
-                    Previous
-                  </button>
-                  <button 
-                    disabled={pagination.current === pagination.pages} 
-                    onClick={() => fetchRecords({ page: pagination.current + 1, region: activeRegion?.id, category: activeCategory?.name, status: viewMode, search: searchTerm })} 
-                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 hover:text-indigo-600 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-400 transition-colors shadow-sm"
-                  >
-                    Next
-                  </button>
+                  <button disabled={pagination.current === 1} onClick={() => fetchRecords({ page: pagination.current - 1, region: activeRegion?.id, category: activeCategory?.name, status: viewMode, search: searchTerm })} className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-50">Previous</button>
+                  <button disabled={pagination.current === pagination.pages} onClick={() => fetchRecords({ page: pagination.current + 1, region: activeRegion?.id, category: activeCategory?.name, status: viewMode, search: searchTerm })} className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 disabled:opacity-50">Next</button>
                 </div>
               </div>
             </div>
           )}
       </div>
 
-      {/* MODALS */}
       <RecordModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleOperationSuccess} recordToEdit={recordToEdit} />
       <FilePasswordModal isOpen={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} onSuccess={handleUnlockSuccess} record={selectedRestrictedRecord} />
       <DocumentViewerModal isOpen={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} fileName={viewerFile?.title || 'Document'} isRestricted={viewerFile?.is_restricted} />
