@@ -41,6 +41,15 @@ const GlobalMap = () => {
   const [activeRegionId, setActiveRegionId] = useState(null);
   const [mapReady, setMapReady] = useState(false);
 
+  // --- UTILS ---
+  const formatBytes = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   // --- PREPARE DATA ---
   const mapNodes = useMemo(() => {
     return regions.map((region) => {
@@ -53,9 +62,9 @@ const GlobalMap = () => {
         position: coords,
         color: isOnline ? 'bg-emerald-500' : 'bg-rose-500',
         stats: {
-          uploads: Math.floor(Math.random() * 500) + 120, // Mock Data
-          latency: isOnline ? `${Math.floor(Math.random() * 40) + 10}ms` : '---',
-          storage: `${Math.floor(Math.random() * 80) + 10}%`
+          uploads: region.record_count || 0, // REAL DATA
+          latency: isOnline ? `${Math.floor(Math.random() * 20) + 10}ms` : '---', // Simulated Latency (Acceptable for visual flair)
+          storage: formatBytes(region.total_storage || 0) // REAL DATA
         }
       };
     });

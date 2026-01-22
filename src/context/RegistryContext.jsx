@@ -27,7 +27,10 @@ export const RegistryProvider = ({ children }) => {
         search: activeFilters.search || '',
         category: activeFilters.category || 'All',
         status: activeFilters.status || 'Active',
-        region: activeFilters.region || ''
+        region: activeFilters.region || '',
+        office_id: activeFilters.office_id || '',
+        shelf: activeFilters.shelf || '',
+        restricted_only: activeFilters.restricted_only // Pass as-is, no default
       });
 
       if (result) {
@@ -66,6 +69,7 @@ export const RegistryProvider = ({ children }) => {
     try {
       await api.updateRecord(id, formData);
       await fetchRecords();
+      toast.success("Record updated successfully");
       setUploading(false);
       return true;
     } catch (err) {
@@ -94,23 +98,52 @@ export const RegistryProvider = ({ children }) => {
   const restoreRecord = async (id) => {
     try {
       await api.restoreRecord(id);
+      toast.success("Record restored to active registry");
       await fetchRecords();
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to restore record");
+    }
   };
 
-  const destroyRecord = async (id) => {
-    if (!window.confirm("Permanent Delete? This cannot be undone.")) return;
+  // Permanent delete (used by Archive page - confirmation handled by UI)
+  const deleteRecord = async (id) => {
     try {
       await api.deleteRecord(id);
       await fetchRecords();
-    } catch (err) { console.error(err); }
+      return true;
+    } catch (err) {
+      console.error("Delete Error:", err);
+      toast.error("Failed to permanently delete record");
+      return false;
+    }
+  };
+
+  const destroyRecord = async (id, confirmed = false) => {
+    if (!confirmed) {
+      toast.error("Permanent delete requires confirmation. Call again with confirmed=true to proceed.", {
+        description: "This action cannot be undone.",
+        duration: 5000
+      });
+      return false;
+    }
+    try {
+      await api.deleteRecord(id);
+      toast.success("Record permanently deleted");
+      await fetchRecords();
+      return true;
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete record");
+      return false;
+    }
   };
 
   return (
     <RegistryContext.Provider value={{
       records, pagination, filters, loading, uploading,
       fetchRecords, uploadRecord, updateRecord,
-      archiveRecord, restoreRecord, destroyRecord
+      archiveRecord, restoreRecord, deleteRecord, destroyRecord
     }}>
       {children}
     </RegistryContext.Provider>

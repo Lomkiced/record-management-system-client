@@ -18,12 +18,14 @@ const Icons = {
   ChevronRight: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>,
   ChevronLeft: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>,
   Logout: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>,
+  Building: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" /></svg>,
+  Archive: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>,
 };
 
 // --- NAV ITEM ---
 const NavItem = ({ item, isCollapsed, isActive, branding }) => (
   <div className="relative group my-1">
-    <div 
+    <div
       className={`absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 rounded-r-lg transition-all duration-300 ${isActive ? 'opacity-100 scale-y-100' : 'bg-transparent opacity-0 scale-y-50'}`}
       style={{ backgroundColor: isActive ? branding.primaryColor : 'transparent', boxShadow: isActive ? `0 0 15px ${branding.primaryColor}` : 'none' }}
     />
@@ -48,29 +50,29 @@ const NavItem = ({ item, isCollapsed, isActive, branding }) => (
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
-  const { branding } = useBranding(); 
+  const { branding } = useBranding();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuItems = useMemo(() => {
     if (!user) return [];
-    
+
     // Define Menu Structure
     const ADMIN_MENU = [
-      { category: "Regional Command", items: [{ path: "/admin", label: "Regional Dashboard", icon: Icons.Dashboard }] },
-      { category: "Governance", items: [{ path: "/registry", label: "Regional Registry", icon: Icons.Folder }, { path: "/codex", label: "Policy Codex", icon: Icons.Book }] },
-      { category: "Workforce", items: [{ path: "/users", label: "Unit Staff", icon: Icons.Users }, { path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
+      { category: "Overview", items: [{ path: "/admin", label: "Dashboard", icon: Icons.Dashboard }] },
+      { category: "Governance", items: [{ path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
+      { category: "Security", items: [{ path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
     ];
 
     const ROLE_MENUS = {
       'SUPER_ADMIN': [
         { category: 'Overview', items: [{ path: '/super-admin', label: 'Command Center', icon: Icons.Dashboard }, { path: '/global-map', label: 'Global Map', icon: Icons.Globe }] },
-        { category: 'Governance', items: [{ path: '/regions', label: 'Regional Units', icon: Icons.Map }, { path: '/registry', label: 'Central Registry', icon: Icons.Folder }, { path: '/codex', label: 'Codex (Rules)', icon: Icons.Book }, { path: '/users', label: 'Personnel', icon: Icons.Users }] },
+        { category: 'Governance', items: [{ path: '/regions', label: 'Regional Units', icon: Icons.Map }, { path: '/offices', label: 'Offices', icon: Icons.Building }, { path: '/registry', label: 'Registry', icon: Icons.Folder }, { path: '/archive', label: 'Archive', icon: Icons.Archive }, { path: '/codex', label: "Classification", icon: Icons.Book }, { path: '/users', label: 'Personnel', icon: Icons.Users }] },
         { category: 'Security', items: [{ path: '/audit', label: 'Audit Logs', icon: Icons.Shield }, { path: '/branding', label: 'System Branding', icon: Icons.Palette }] }
       ],
       'ADMIN': ADMIN_MENU,
       'REGIONAL_ADMIN': ADMIN_MENU,
       'STAFF': [
-        { category: 'Workspace', items: [{ path: '/staff', label: 'My Dashboard', icon: Icons.Home }, { path: '/registry', label: 'File Search', icon: Icons.Search }, { path: '/codex', label: 'Reference Codex', icon: Icons.Book }] }
+        { category: 'Workspace', items: [{ path: '/staff', label: 'My Dashboard', icon: Icons.Home }, { path: '/registry', label: 'Records', icon: Icons.Search }, { path: '/codex', label: 'Classifications', icon: Icons.Book }] }
       ]
     };
 
@@ -88,11 +90,11 @@ const Sidebar = () => {
           <div className="relative group">
             <div className="absolute -inset-1 rounded-lg blur opacity-40 group-hover:opacity-75 transition duration-200" style={{ background: `linear-gradient(to right, ${branding.primaryColor}, ${branding.secondaryColor})` }}></div>
             <div className="relative w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center ring-1 ring-white/10 overflow-hidden">
-               {branding.logoUrl ? (
-                   <img src={branding.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
-               ) : (
-                   <span className="text-transparent bg-clip-text font-black text-xl" style={{ backgroundImage: `linear-gradient(to right, ${branding.primaryColor}, #fff)` }}>R</span>
-               )}
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+              ) : (
+                <span className="text-transparent bg-clip-text font-black text-xl" style={{ backgroundImage: `linear-gradient(to right, ${branding.primaryColor}, #fff)` }}>R</span>
+              )}
             </div>
           </div>
           <div>
@@ -101,13 +103,13 @@ const Sidebar = () => {
           </div>
         </div>
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ${isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}>
-           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border border-slate-700/50 flex items-center justify-center shadow-lg shadow-blue-500/10 overflow-hidden">
-             {branding.logoUrl ? (
-                 <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 object-contain" />
-             ) : (
-                 <span className="font-black text-2xl" style={{ color: branding.primaryColor }}>R</span>
-             )}
-           </div>
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 border border-slate-700/50 flex items-center justify-center shadow-lg shadow-blue-500/10 overflow-hidden">
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 object-contain" />
+            ) : (
+              <span className="font-black text-2xl" style={{ color: branding.primaryColor }}>R</span>
+            )}
+          </div>
         </div>
         <button onClick={() => setIsCollapsed(!isCollapsed)} className="absolute -right-3 top-1/2 -translate-y-1/2 w-7 h-7 bg-slate-900 border border-slate-700 text-slate-400 rounded-full flex items-center justify-center hover:text-white transition-all z-50 group" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
           {isCollapsed ? <Icons.ChevronRight className="w-4 h-4 group-hover:scale-110 transition-transform" /> : <Icons.ChevronLeft className="w-4 h-4 group-hover:scale-110 transition-transform" />}
@@ -134,15 +136,15 @@ const Sidebar = () => {
       {/* USER DOCK */}
       <div className="p-4 border-t border-slate-800/50 bg-[#05080F]/50 backdrop-blur-sm">
         <div className={`relative bg-slate-900/40 border border-white/5 rounded-2xl p-3 transition-all duration-300 hover:border-slate-600 hover:bg-slate-800/80 hover:shadow-lg group cursor-pointer overflow-hidden ${isCollapsed ? 'justify-center' : ''} flex items-center gap-3`}>
-           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `linear-gradient(to right, ${branding.primaryColor}1a, transparent)` }} />
-           <div className={`relative shrink-0 transition-all duration-300 ${isCollapsed ? 'group-hover:opacity-0' : ''}`}>
-             <div className="w-10 h-10 rounded-full p-[2px] shadow-lg" style={{ background: `linear-gradient(to bottom right, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
-               <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white">{user.username?.charAt(0).toUpperCase() || 'U'}</div>
-             </div>
-             <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></span>
-           </div>
-           {!isCollapsed && <div className="flex-1 min-w-0 relative z-10"><p className="text-sm font-bold text-white truncate group-hover:text-blue-200 transition-colors">{user.username}</p><p className="text-[10px] text-slate-400 truncate uppercase font-bold tracking-wider">{user.role === 'ADMIN' ? 'Regional Admin' : user.role.replace('_', ' ')}</p></div>}
-           <button onClick={logout} title="Logout" className={`text-slate-400 hover:text-red-400 transition-all duration-300 z-20 ${isCollapsed ? 'absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-slate-900/90 backdrop-blur-sm rounded-2xl' : 'opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0'}`}><Icons.Logout className="w-5 h-5 hover:scale-110 transition-transform" /></button>
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `linear-gradient(to right, ${branding.primaryColor}1a, transparent)` }} />
+          <div className={`relative shrink-0 transition-all duration-300 ${isCollapsed ? 'group-hover:opacity-0' : ''}`}>
+            <div className="w-10 h-10 rounded-full p-[2px] shadow-lg" style={{ background: `linear-gradient(to bottom right, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
+              <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-xs font-bold text-white">{user.username?.charAt(0).toUpperCase() || 'U'}</div>
+            </div>
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse"></span>
+          </div>
+          {!isCollapsed && <div className="flex-1 min-w-0 relative z-10"><p className="text-sm font-bold text-white truncate group-hover:text-blue-200 transition-colors">{user.username}</p><p className="text-[10px] text-slate-400 truncate uppercase font-bold tracking-wider">{user.role === 'ADMIN' ? 'Regional Admin' : user.role.replace('_', ' ')}</p></div>}
+          <button onClick={logout} title="Logout" className={`text-slate-400 hover:text-red-400 transition-all duration-300 z-20 ${isCollapsed ? 'absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-slate-900/90 backdrop-blur-sm rounded-2xl' : 'opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0'}`}><Icons.Logout className="w-5 h-5 hover:scale-110 transition-transform" /></button>
         </div>
       </div>
     </aside>

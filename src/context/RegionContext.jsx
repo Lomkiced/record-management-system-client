@@ -57,6 +57,7 @@ export const RegionProvider = ({ children }) => {
         } catch (error) {
             console.error("Add Region Error:", error);
             toast.error("Server Error");
+            return false;
         }
     };
 

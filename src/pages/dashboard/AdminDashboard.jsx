@@ -1,20 +1,35 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
 import RetentionMonitor from '../../components/dashboard/RetentionMonitor';
 
 // --- ICONS ---
 const Icons = {
-  Users: () => <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>,
-  File: () => <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-  Alert: () => <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+  Users: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+  File: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+  Storage: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>,
+  Trend: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
+  Activity: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+};
+
+const formatBytes = (bytes) => {
+  if (!+bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ users: 0, records: 0, storage: 0, disposal_queue: [] });
+  const [stats, setStats] = useState({
+    users: 0, records: 0, storage: 0,
+    disposal_queue: [], office_stats: [], monthly_stats: [], recent_activity: []
+  });
   const [loading, setLoading] = useState(true);
+  const [chartMode, setChartMode] = useState('trends'); // 'trends' or 'office'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,88 +38,175 @@ const AdminDashboard = () => {
         const res = await fetch('http://localhost:5000/api/dashboard/stats', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
-          setStats({ ...data, disposal_queue: data.disposal_queue || [] });
+          setStats(data);
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     };
     fetchData();
   }, []);
 
-  if (loading) return <div className="p-8 text-slate-400 font-bold animate-pulse">Syncing Regional Data...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50/50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <p className="text-sm font-bold text-slate-400 animate-pulse">Syncing Headquarters...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="p-8 min-h-screen bg-slate-50/50 animate-fade-in flex flex-col gap-8">
+    <div className="p-8 min-h-screen bg-slate-50/50 animate-fade-in flex flex-col gap-6">
 
       {/* HEADER */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-3xl p-8 shadow-xl relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-2 opacity-80">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-            <span className="text-xs font-bold uppercase tracking-widest">Regional Command</span>
-          </div>
-          <h1 className="text-3xl font-bold">{user.region} Dashboard</h1>
-          <p className="text-blue-100 mt-2 text-sm max-w-lg">Operational overview and document lifecycle management for your jurisdiction.</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+            {user.role === 'ADMIN' ? 'Overview' : 'Dashboard'}
+          </h1>
+          <p className="text-sm font-medium text-slate-500">
+            {user.role === 'ADMIN' ? 'Centralized Overview • All Regions' : `Regional Overview • ${user.region}`}
+          </p>
         </div>
-        <div className="absolute right-0 bottom-0 opacity-10 transform translate-y-1/4 translate-x-1/4 text-9xl">📍</div>
-      </div>
+        <div className="flex gap-2">
 
-      {/* KEY METRICS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-        {/* USERS CARD */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between group hover:border-indigo-200 transition-colors">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Regional Staff</h3>
-              <div className="p-2 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors"><Icons.Users /></div>
-            </div>
-            <p className="text-4xl font-black text-slate-800">{stats.users}</p>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Active Staff Members</p>
-          </div>
-          <button onClick={() => navigate('/users')} className="mt-4 text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
-            Manage Staff →
+          <button onClick={() => window.location.reload()} className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-colors">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
         </div>
+      </div>
 
-        {/* RECORDS CARD */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between group hover:border-emerald-200 transition-colors">
+      {/* STATS ROW */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5 group hover:border-indigo-200 transition-all">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Icons.Users />
+          </div>
           <div>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Active Records</h3>
-              <div className="p-2 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total Staff</p>
+            <p className="text-3xl font-black text-slate-800">{stats.users}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5 group hover:border-emerald-200 transition-all">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Icons.File />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Active Records</p>
+            <p className="text-3xl font-black text-slate-800">{stats.records}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-5 group hover:border-purple-200 transition-all">
+          <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+            <Icons.Storage />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Storage Used</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-black text-slate-800">{formatBytes(stats.storage).split(' ')[0]}</p>
+              <span className="text-sm font-bold text-slate-500">{formatBytes(stats.storage).split(' ')[1]}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+
+        {/* LEFT COLUMN: ANALYTICS (2/3) */}
+        <div className="lg:col-span-2 flex flex-col gap-6">
+
+          {/* CHART CARD */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 min-h-[400px]">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Icons.Trend /> Analytics Overview
+              </h2>
+              <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
+                <button onClick={() => setChartMode('trends')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${chartMode === 'trends' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Upload Trends</button>
+                <button onClick={() => setChartMode('office')} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${chartMode === 'office' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Office Performance</button>
               </div>
             </div>
-            <p className="text-4xl font-black text-slate-800">{stats.records}</p>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Encrypted & Stored</p>
-          </div>
-          <button onClick={() => navigate('/registry')} className="mt-4 text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
-            Go to Registry →
-          </button>
-        </div>
 
-        {/* ALERT CARD */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between group hover:border-amber-200 transition-colors">
-          <div>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider">Disposal Alert</h3>
-              <div className="p-2 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors"><Icons.Alert /></div>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                {chartMode === 'trends' ? (
+                  <AreaChart data={stats.monthly_stats}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      cursor={{ stroke: '#6366f1', strokeWidth: 1 }}
+                    />
+                    <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={stats.office_stats}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 12 }} />
+                    <Tooltip cursor={{ fill: '#F1F5F9', radius: 8 }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="value" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={40} />
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
             </div>
-            <p className="text-4xl font-black text-slate-800">{stats.disposal_queue.length}</p>
-            <p className="text-xs text-slate-400 mt-1 font-medium">Files Pending Action</p>
           </div>
-        </div>
-      </div>
 
-      {/* DISPOSAL SCHEDULE */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800">Regional Disposal Schedule</h3>
-          <p className="text-xs text-slate-400 mt-1">Files approaching mandatory disposal date based on retention policy.</p>
+          {/* DISPOSAL MONITOR */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-800">Retention & Disposal</h3>
+              <span className="text-xs font-bold text-slate-400 uppercase">Upcoming Expiries</span>
+            </div>
+            <RetentionMonitor disposalQueue={stats.disposal_queue} />
+          </div>
+
         </div>
-        <div className="p-0">
-          <RetentionMonitor disposalQueue={stats.disposal_queue} />
+
+        {/* RIGHT COLUMN: FEED (1/3) */}
+        <div className="flex flex-col gap-6">
+
+          {/* RECENT ACTIVITY */}
+          <div className="bg-white p-0 rounded-2xl shadow-sm border border-slate-100 overflow-hidden h-fit">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Icons.Activity /> Recent Activity
+              </h3>
+            </div>
+            <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto">
+              {stats.recent_activity.map((log, i) => (
+                <div key={i} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${log.action.includes('CREATE') ? 'bg-emerald-50 text-emerald-600' :
+                      log.action.includes('DELETE') ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                      }`}>{log.action}</span>
+                    <span className="text-[10px] text-slate-400 font-mono tracking-tighter">
+                      {new Date(log.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-700 font-medium line-clamp-2">{log.details}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    • {new Date(log.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
+              ))}
+              {stats.recent_activity.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs italic">No recent activity</div>
+              )}
+            </div>
+          </div>
+
         </div>
+
       </div>
     </div>
   );

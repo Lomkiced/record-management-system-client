@@ -13,8 +13,12 @@ const Icons = {
     Refresh: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
 };
 
+import UserModal from '../../components/super-admin/UserModal';
+import { useConfirmation } from '../../context/ConfirmationContext';
+
 const UserList = () => {
     const { user } = useAuth(); // Contains { id, role, region_id }
+    const { confirm } = useConfirmation();
     const [users, setUsers] = useState([]);
     const [regions, setRegions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -27,10 +31,7 @@ const UserList = () => {
     // MODAL STATE
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [formData, setFormData] = useState({
-        id: null, name: '', username: '', password: '', role: 'STAFF', office: '', region_id: '', status: 'Active'
-    });
+    const [targetUser, setTargetUser] = useState(null); // The user being edited, or null for new
 
     // --- 1. FETCH DATA (CRASH PROOF) ---
     const fetchData = async () => {
@@ -109,53 +110,54 @@ const UserList = () => {
     });
 
     // --- 3. HANDLERS ---
-    const handleOpenModal = (targetUser = null) => {
-        if (targetUser) {
-            setFormData({ ...targetUser, password: '' });
-            setIsEditing(true);
-        } else {
-            // SMART PRE-FILL
-            let defaultRole = 'STAFF';
-            if (filterRole === 'ADMIN') defaultRole = 'ADMIN';
-            if (filterRole === 'SUPER_ADMIN') defaultRole = 'SUPER_ADMIN';
-
-            let defaultRegion = isSuperAdmin ? '' : user.region_id;
-            if (isSuperAdmin && filterRegion !== 'ALL') defaultRegion = filterRegion;
-
-            setFormData({
-                id: null, name: '', username: '', password: '',
-                role: defaultRole, office: '', region_id: defaultRegion, status: 'Active'
-            });
-            setIsEditing(false);
-        }
+    const handleOpenModal = (userToEdit = null) => {
+        setTargetUser(userToEdit);
         setIsModalOpen(true);
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault(); setIsSaving(true);
+    const handleSaveUser = async (formData) => {
+        const isEdit = !!targetUser;
         const token = localStorage.getItem('dost_token');
-        const url = isEditing ? `http://localhost:5000/api/users/${formData.user_id}` : 'http://localhost:5000/api/users';
-        const method = isEditing ? 'PUT' : 'POST';
+        const url = isEdit ? `http://localhost:5000/api/users/${targetUser.user_id}` : 'http://localhost:5000/api/users';
+        const method = isEdit ? 'PUT' : 'POST';
+
         try {
-            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(formData) });
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(formData)
+            });
+
             if (res.ok) {
-                setIsModalOpen(false);
                 fetchData();
-                toast.success(isEditing ? 'Personnel updated successfully' : 'New personnel onboarded');
+                toast.success(isEdit ? 'Personnel updated successfully' : 'New personnel onboarded');
+                return true;
             } else {
                 const d = await res.json();
                 toast.error(d.message || 'Operation failed');
+                return false;
             }
         } catch (err) {
             toast.error("Unable to connect to server");
-        } finally { setIsSaving(false); }
+            return false;
+        }
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Are you sure?")) return;
-        const token = localStorage.getItem('dost_token');
-        await fetch(`http://localhost:5000/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-        fetchData();
+        const isConfirmed = await confirm({
+            title: 'Terminate Access?',
+            message: 'This user will be permanently removed from the system. History logs will remain.',
+            confirmLabel: 'Terminate User',
+            variant: 'danger',
+            icon: 'trash'
+        });
+
+        if (isConfirmed) {
+            const token = localStorage.getItem('dost_token');
+            await fetch(`http://localhost:5000/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            fetchData();
+            toast.success("User removed from system");
+        }
     };
 
     return (
@@ -300,62 +302,15 @@ const UserList = () => {
             </div>
 
             {/* MODAL (Context Aware) */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-zoom-in">
-                        <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-800">{isEditing ? 'Update Personnel' : 'Onboard New User'}</h2>
-                                <p className="text-xs text-slate-500 mt-0.5">Fill in the details below to grant system access.</p>
-                            </div>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Name</label>
-                                    <input required className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Juan Dela Cruz" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Username</label>
-                                    <input required disabled={isEditing} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:text-slate-500" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} placeholder="jdelacruz" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Password</label>
-                                    <input type="password" required={!isEditing} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder="••••••••" />
-                                </div>
-                            </div>
-                            <hr className="border-slate-100" />
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Role</label>
-                                    <select className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500/20" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}>
-                                        <option value="STAFF">Staff Member</option>
-                                        <option value="ADMIN">Regional Admin</option>
-                                        {isSuperAdmin && <option value="SUPER_ADMIN">Super Admin</option>}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Office / Unit</label>
-                                    <input required className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all" value={formData.office} onChange={e => setFormData({ ...formData, office: e.target.value })} placeholder="e.g. IT Unit" />
-                                </div>
-                                {isSuperAdmin && (
-                                    <div className="col-span-2">
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assigned Region</label>
-                                        <select className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none cursor-pointer focus:ring-2 focus:ring-indigo-500/20" value={formData.region_id} onChange={e => setFormData({ ...formData, region_id: e.target.value })}>
-                                            <option value="">Select Region...</option>
-                                            {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                                <button type="submit" disabled={isSaving} className="flex-1 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-70">{isSaving ? 'Saving...' : 'Confirm & Save'}</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            <UserModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                user={targetUser}
+                isSuperAdmin={isSuperAdmin}
+                regions={regions}
+                userRegionId={user?.region_id}
+                onSave={handleSaveUser}
+            />
         </div>
     );
 };

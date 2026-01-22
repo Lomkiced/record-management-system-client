@@ -71,27 +71,27 @@ export const getRecords = async (params = {}) => {
 
 // Forced multipart/form-data for file uploads
 export const createRecord = async (formData) => {
-  const response = await api.post('/records', formData, { 
-    headers: { 'Content-Type': 'multipart/form-data' } 
+  const response = await api.post('/records', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
   return response.data;
 };
 
 export const updateRecord = async (id, formData) => {
-  const response = await api.put(`/records/${id}`, formData, { 
-    headers: { 'Content-Type': 'multipart/form-data' } 
+  const response = await api.put(`/records/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
   return response.data;
 };
 
 export const archiveRecord = async (id) => {
-    const response = await api.put(`/records/${id}/archive`);
-    return response.data;
+  const response = await api.put(`/records/${id}/archive`);
+  return response.data;
 };
 
 export const restoreRecord = async (id) => {
-    const response = await api.put(`/records/${id}/restore`);
-    return response.data;
+  const response = await api.put(`/records/${id}/restore`);
+  return response.data;
 };
 
 export const deleteRecord = async (id) => {
@@ -99,35 +99,49 @@ export const deleteRecord = async (id) => {
   return response.data;
 };
 
+export const getShelves = async (params) => {
+  const response = await api.get('/records/shelves', { params });
+  const data = response.data;
+  if (response.headers['x-debug-trace']) {
+    data._debug = response.headers['x-debug-trace'];
+  }
+  return data;
+};
+
+export const deleteShelf = async (data) => {
+  const response = await api.post('/records/shelves/delete', data);
+  return response.data;
+};
+
 // --- CODEX (Classification Rules) ---
 export const getCategories = async () => {
-    const response = await api.get('/codex/categories'); 
-    return response.data;
+  const response = await api.get('/codex/categories');
+  return response.data;
 };
 
 export const addCategory = async (data) => {
-    const response = await api.post('/codex/categories', data);
-    return response.data;
+  const response = await api.post('/codex/categories', data);
+  return response.data;
 };
 
 export const deleteCategory = async (id) => {
-    const response = await api.delete(`/codex/categories/${id}`);
-    return response.data;
+  const response = await api.delete(`/codex/categories/${id}`);
+  return response.data;
 };
 
 export const getTypes = async () => {
-    const response = await api.get('/codex/types');
-    return response.data;
+  const response = await api.get('/codex/types');
+  return response.data;
 };
 
 export const addType = async (data) => {
-    const response = await api.post('/codex/types', data);
-    return response.data;
+  const response = await api.post('/codex/types', data);
+  return response.data;
 };
 
 export const deleteType = async (id) => {
-    const response = await api.delete(`/codex/types/${id}`);
-    return response.data;
+  const response = await api.delete(`/codex/types/${id}`);
+  return response.data;
 };
 
 // --- USER PROFILE & SETTINGS ---
@@ -148,12 +162,12 @@ export const changePassword = async (passwordData) => {
 
 // --- SYSTEM ADMIN & DASHBOARD ---
 export const getStats = async () => {
-  const response = await api.get('/dashboard/stats'); 
+  const response = await api.get('/dashboard/stats');
   return response.data;
 };
 
 export const getLogs = async (params = {}) => {
-  const response = await api.get('/admin/logs', { params });
+  const response = await api.get('/audit', { params });
   return response.data;
 };
 

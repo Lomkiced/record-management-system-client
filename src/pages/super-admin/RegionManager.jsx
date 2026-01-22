@@ -38,16 +38,6 @@ const RegionManager = () => {
     r.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- MOCK TELEMETRY ---
-  const getTelemetry = (id, status) => {
-    // Deterministic pseudo-random based on ID char codes
-    const seed = String(id).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const load = status === 'Active' ? (seed % 40) + 10 : 0;
-    const storage = (seed % 60) + 20;
-    const latency = status === 'Active' ? (seed % 20) + 5 : 0;
-    return { load, storage, latency };
-  };
-
   // --- HANDLERS ---
   const handleOpenModal = (region = null) => {
     if (region) { setEditingId(region.id); setFormData(region); }
@@ -117,7 +107,6 @@ const RegionManager = () => {
       <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 pr-2 pb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredRegions.map((region) => {
-            const tel = getTelemetry(region.id, region.status);
             return (
               <div key={region.id} className="group bg-white rounded-2xl p-0 border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all duration-300 flex flex-col relative overflow-hidden">
 
@@ -133,34 +122,47 @@ const RegionManager = () => {
                         </span>
                         <span className={`flex h-2 w-2 rounded-full ${region.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
                       </div>
-                      <h3 className="text-xl font-black text-slate-800 leading-tight group-hover:text-indigo-700 transition-colors cursor-pointer" onClick={() => handleOpenModal(region)}>{region.name}</h3>
+                      <h3 className="text-xl font-black text-slate-800 leading-tight group-hover:text-indigo-700 transition-colors cursor-pointer" onClick={() => {
+                        // Custom Flow Logic
+                        const rId = Number(region.id);
+                        if ([1, 3].includes(rId)) {
+                          // Ilocos Norte, La Union -> Direct to Classification
+                          navigate('/codex', { state: { regionId: rId } });
+                        } else {
+                          // Pangasinan, Ilocos Sur, Ilocos Region -> Offices Drilldown
+                          navigate('/offices', { state: { regionId: rId } });
+                        }
+                      }}>{region.name}</h3>
                       <p className="text-sm text-slate-400 font-medium mt-1 flex items-center gap-1"><Icons.Map /> {region.address}</p>
                     </div>
 
                     {/* Actions Dropdown Substitute */}
                     <div className="flex flex-col gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleOpenModal(region)} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100 rounded-lg transition-all" title="Edit Configuration"><Icons.Edit /></button>
-                      <button onClick={() => handleDelete(region.id)} className="p-2 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-white border border-transparent hover:border-rose-100 rounded-lg transition-all" title="Disconnect Unit"><Icons.Trash /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleOpenModal(region); }} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-indigo-100 rounded-lg transition-all" title="Edit Configuration"><Icons.Edit /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(region.id); }} className="p-2 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-white border border-transparent hover:border-rose-100 rounded-lg transition-all" title="Disconnect Unit"><Icons.Trash /></button>
                     </div>
                   </div>
 
-                  {/* Telemetry Dashboard */}
+                  {/* Real Statistics Dashboard */}
                   <div className="grid grid-cols-3 gap-2 mt-auto pt-4 border-t border-slate-50">
-                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Server Load</span>
-                      <div className="text-sm font-bold text-slate-700">{tel.load}%</div>
-                      <div className="w-full bg-slate-200 h-1 rounded-full mt-1"><div className="bg-indigo-500 h-1 rounded-full" style={{ width: `${tel.load}%` }}></div></div>
+                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center cursor-pointer hover:bg-indigo-50 transition-colors" onClick={() => {
+                      const rId = Number(region.id);
+                      if ([1, 3].includes(rId)) {
+                        navigate('/codex', { state: { regionId: rId } });
+                      } else {
+                        navigate('/offices', { state: { regionId: rId } });
+                      }
+                    }}>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Offices</span>
+                      <div className="text-lg font-black text-indigo-600">{region.office_count || 0}</div>
                     </div>
-                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Storage</span>
-                      <div className="text-sm font-bold text-slate-700">{tel.storage} TB</div>
-                      <div className="w-full bg-slate-200 h-1 rounded-full mt-1"><div className="bg-cyan-500 h-1 rounded-full" style={{ width: `${tel.storage}%` }}></div></div>
+                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Records</span>
+                      <div className="text-lg font-black text-cyan-600">{region.record_count || 0}</div>
                     </div>
-                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Latency</span>
-                      <div className="text-sm font-bold text-slate-700 flex items-center gap-1">
-                        {tel.latency}ms <Icons.Signal />
-                      </div>
+                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 text-center">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Users</span>
+                      <div className="text-lg font-black text-emerald-600">{region.user_count || 0}</div>
                     </div>
                   </div>
                 </div>

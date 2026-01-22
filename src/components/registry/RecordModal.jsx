@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import { useOffices } from '../../context/OfficeContext';
+import { getShelves } from '../../services/endpoints/api';
 
 // --- HELPER: FORMAT BYTES ---
 const formatBytes = (bytes, decimals = 2) => {
@@ -12,36 +14,74 @@ const formatBytes = (bytes, decimals = 2) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
+const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, currentOffice, currentSubOffice, currentCategory }) => {
+    // ... (existing hooks) ...
+
+    // HELPER: Fix Grammar (1 Year vs 2 Years)
+    const formatRetention = (period) => {
+        if (!period || period === 'Permanent') return 'Permanent';
+        // Check if it matches "Number Unit" pattern
+        const match = period.match(/^(\d+)\s*(\w+)$/i);
+        if (match) {
+            const num = parseInt(match[1]);
+            const unit = match[2].toLowerCase(); // year, years, etc.
+
+            // Normalize unit base
+            let baseUnit = unit;
+            if (baseUnit.endsWith('s')) baseUnit = baseUnit.slice(0, -1);
+
+            if (num === 1) return `1 ${baseUnit}`; // 1 Year
+            return `${num} ${baseUnit}s`; // 5 Years
+        }
+        return period;
+    };
+
+    // ... (state definitions) ...
+
     const { user } = useAuth();
+    const { getOfficesByRegion, getSubOffices } = useOffices();
     const [loading, setLoading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
 
     // DATA SOURCES
     const [regions, setRegions] = useState([]);
+    const [offices, setOffices] = useState([]); // Parent Offices
+    const [subOffices, setSubOffices] = useState([]); // Sub-Units
     const [codexCategories, setCodexCategories] = useState([]);
     const [codexTypes, setCodexTypes] = useState([]);
     const [availableTypes, setAvailableTypes] = useState([]);
+    const [availableShelves, setAvailableShelves] = useState([]);
+    const [showShelfSuggestions, setShowShelfSuggestions] = useState(false);
 
     // FORM STATE
     const [formData, setFormData] = useState({
         title: '',
         region_id: '',
+        office_id: '', // This holds the FINAL selected office (Parent or Sub)
         category_name: '',
         classification_rule: '',
+        shelf: '',
         retention_period: '',
         file: null,
+
         is_restricted: false,
-        file_password: ''
+        period_covered: '',
+        volume: '',
+        duplication: '',
+        time_value: 'P',
+        utility_value: 'Adm'
     });
+
+    // Separated state for dropdowns
+    const [selectedParentOffice, setSelectedParentOffice] = useState('');
+    const [selectedSubOffice, setSelectedSubOffice] = useState('');
 
     const isEditMode = !!recordToEdit;
 
     // 1. INITIALIZE DATA & FORM
     useEffect(() => {
         if (isOpen) {
-            // A. Load Reference Data
             const fetchData = async () => {
                 const token = localStorage.getItem('dost_token');
                 const headers = { 'Authorization': `Bearer ${token}` };
@@ -54,51 +94,163 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
 
                     const categoriesData = await cat.json();
                     const typesData = await typ.json();
+                    const regionsData = await reg.json();
 
-                    if (reg.ok) setRegions(await reg.json());
+                    if (reg.ok) setRegions(regionsData);
                     if (cat.ok) setCodexCategories(categoriesData);
                     if (typ.ok) setCodexTypes(typesData);
 
-                    // B. Populate Form (If Edit Mode)
+                    // --- B. EDIT MODE ---
                     if (recordToEdit) {
                         setFormData({
                             title: recordToEdit.title || '',
                             region_id: recordToEdit.region_id || '',
+                            office_id: recordToEdit.office_id || '',
                             category_name: recordToEdit.category || '',
                             classification_rule: recordToEdit.classification_rule || '',
+                            shelf: recordToEdit.shelf || '',
                             retention_period: recordToEdit.retention_period || '',
-                            file: null, // File cannot be changed in edit mode
+                            file: null,
                             is_restricted: recordToEdit.is_restricted || false,
-                            file_password: ''
+                            period_covered: recordToEdit.period_covered || '',
+                            volume: recordToEdit.volume || '',
+                            duplication: recordToEdit.duplication || '',
+                            time_value: recordToEdit.time_value || 'P',
+                            utility_value: recordToEdit.utility_value || 'Adm'
                         });
 
-                        // Trigger available types filter immediately
-                        const catObj = categoriesData.find(c => c.name === recordToEdit.category);
-                        if (catObj) {
-                            setAvailableTypes(typesData.filter(t => t.category_id === catObj.category_id));
+                        // Populate Offices
+                        if (recordToEdit.region_id) {
+                            const officeData = await getOfficesByRegion(recordToEdit.region_id);
+                            setOffices(officeData);
                         }
+
+                        // Determine Parent/Sub Office Logic for Edit
+                        if (recordToEdit.office_id) {
+                            // Fetch specific office details to check if it has a parent
+                            const res = await fetch(`http://localhost:5000/api/offices/${recordToEdit.office_id}`, { headers });
+                            const output = await res.json();
+
+                            if (output.parent_id) {
+                                // It's a sub-office
+                                setSelectedParentOffice(output.parent_id);
+                                setSelectedSubOffice(output.office_id);
+                                // Load sub-offices logic for this parent
+                                const subs = await getSubOffices(output.parent_id);
+                                setSubOffices(subs);
+                            } else {
+                                // It's a top-level office
+                                setSelectedParentOffice(output.office_id);
+                                setSelectedSubOffice('');
+                                // Check if it HAS sub-offices (to populate dropdown if user wants to change)
+                                const subs = await getSubOffices(output.office_id);
+                                setSubOffices(subs);
+                            }
+                        }
+
+                        const catObj = categoriesData.find(c => c.name === recordToEdit.category);
+                        if (catObj) setAvailableTypes(typesData.filter(t => t.category_id === catObj.category_id));
                     } else {
-                        // C. Reset (If Create Mode)
+                        const initialRegion = currentRegion?.id || user.region_id || '';
+                        const initParent = currentOffice?.office_id || '';
+                        const initSub = currentSubOffice?.office_id || '';
+
                         setFormData({
                             title: '',
-                            region_id: user.role === 'SUPER_ADMIN' ? '' : user.region_id,
-                            category_name: '',
+                            region_id: initialRegion,
+                            office_id: initSub || initParent || '',
+                            category_name: currentCategory?.name || '',
                             classification_rule: '',
+                            shelf: '',
                             retention_period: '',
                             file: null,
                             is_restricted: false,
-                            file_password: ''
+                            period_covered: '',
+                            volume: '',
+                            duplication: '',
+                            time_value: '',
+                            utility_value: ''
                         });
                         setUploadProgress(0);
+                        setSelectedParentOffice(initParent);
+                        setSelectedSubOffice(initSub);
+
+                        // Auto-load offices if region is known
+                        if (initialRegion) {
+                            const officeData = await getOfficesByRegion(initialRegion);
+                            setOffices(officeData);
+                        }
+
+                        // Auto-load sub-offices if parent is known
+                        if (initParent) {
+                            const subs = await getSubOffices(initParent);
+                            setSubOffices(subs);
+                        }
+
+                        // Auto-filter types if category is known
+                        if (currentCategory?.name) {
+                            const catObj = categoriesData.find(c => c.name === currentCategory.name);
+                            if (catObj) setAvailableTypes(typesData.filter(t => t.category_id === catObj.category_id));
+                        }
                     }
 
                 } catch (e) { console.error("Modal Init Error:", e); }
             };
             fetchData();
         }
-    }, [isOpen, recordToEdit, user]);
+    }, [isOpen, recordToEdit, user, currentRegion, currentOffice, currentSubOffice, currentCategory]);
 
-    // 2. DYNAMIC FILTERS (Handle Dropdown Logic)
+
+
+    // Handle Region Change -> Load Offices
+    const handleRegionChange = async (e) => {
+        const regId = e.target.value;
+        setFormData(p => ({ ...p, region_id: regId, office_id: '' }));
+        setSelectedParentOffice('');
+        setSelectedSubOffice('');
+        setSubOffices([]);
+        setOffices([]); // Clear immediately
+
+        if (regId) {
+            try {
+                const officeData = await getOfficesByRegion(regId);
+                setOffices(officeData);
+                if (officeData.length === 0) {
+                    toast.warning("No registered offices found in this province.");
+                }
+            } catch (err) {
+                console.error(err);
+                toast.error("Failed to load offices.");
+            }
+        }
+    };
+
+    // Handle Parent Office Change -> Load Sub-Offices
+    const handleParentOfficeChange = async (e) => {
+        const pId = e.target.value;
+        setSelectedParentOffice(pId);
+        setSelectedSubOffice('');
+
+        // Default office_id is the parent (until a sub is selected)
+        setFormData(p => ({ ...p, office_id: pId }));
+
+        if (pId) {
+            const subs = await getSubOffices(pId);
+            setSubOffices(subs);
+        } else {
+            setSubOffices([]);
+        }
+    };
+
+    // Handle Sub-Office Change
+    const handleSubOfficeChange = (e) => {
+        const sId = e.target.value;
+        setSelectedSubOffice(sId);
+        // If sub-office selected, that is the office_id. If cleared, fallback to parent.
+        setFormData(p => ({ ...p, office_id: sId || selectedParentOffice }));
+    };
+
+    // 2. DYNAMIC FILTERS
     const handleCategoryChange = (e) => {
         const val = e.target.value;
         const catObj = codexCategories.find(c => c.name === val);
@@ -123,14 +275,29 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
         setFormData(p => ({
             ...p,
             classification_rule: val,
-            retention_period: rule ? (rule.retention_period || 'Permanent') : 'Permanent'
+            retention_period: rule ? formatRetention(rule.retention_period || 'Permanent') : 'Permanent'
         }));
     };
 
-    // --- DRAG & DROP (Only for Create Mode) ---
+    // 3. FETCH SHELVES DYNAMICALLY
+    useEffect(() => {
+        if (formData.region_id && formData.office_id && formData.category_name) {
+            getShelves({
+                region_id: formData.region_id,
+                office_id: formData.office_id,
+                category: formData.category_name,
+                restricted_only: formData.is_restricted // Filter by Vault Status
+            })
+                .then(shelves => setAvailableShelves(shelves || []))
+                .catch(console.error);
+        } else {
+            setAvailableShelves([]);
+        }
+    }, [formData.region_id, formData.office_id, formData.category_name, formData.is_restricted, isOpen]);
+
+    // --- DRAG & DROP ---
     const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
     const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
-
     const handleDrop = (e) => {
         e.preventDefault();
         setIsDragging(false);
@@ -138,7 +305,6 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
             validateAndSetFile(e.dataTransfer.files[0]);
         }
     };
-
     const validateAndSetFile = (file) => {
         if (file.type !== 'application/pdf') return toast.error("Invalid Format. PDF only.");
         const cleanTitle = file.name.replace(/\.[^/.]+$/, "");
@@ -149,8 +315,34 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // --- STRICT VALIDATION ---
+
+        // 1. File Check
         if (!isEditMode && !formData.file) return toast.error("Please select a file.");
-        if (formData.is_restricted && !isEditMode && !formData.file_password) return toast.error("Password required for restricted files.");
+
+        // 2. Location Check
+        if (!formData.region_id) return toast.error("Please select a Province.");
+
+        // 3. Office/Unit Logic
+        if (!formData.office_id) return toast.error("Please select an Office.");
+        // If the selected parent has sub-offices, ensure one is selected
+        if (selectedParentOffice && subOffices.length > 0 && !selectedSubOffice) {
+            return toast.error("Please select a specific Unit/Section.");
+        }
+
+        // 4. Metadata Completeness
+        const requiredFields = [
+            { key: 'category_name', label: 'Category' },
+            { key: 'classification_rule', label: 'Description/Type' },
+            { key: 'shelf', label: 'Shelf' },
+            { key: 'period_covered', label: 'Period Covered' },
+            { key: 'volume', label: 'Volume' },
+            { key: 'duplication', label: 'Duplication' }
+        ];
+
+        for (const field of requiredFields) {
+            if (!formData[field.key]) return toast.error(`Please fill in ${field.label}.`);
+        }
 
         setLoading(true);
 
@@ -168,26 +360,31 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
             let res;
 
             if (isEditMode) {
-                // --- UPDATE (JSON) ---
                 res = await fetch(`http://localhost:5000/api/records/${recordToEdit.record_id}`, {
                     method: 'PUT',
                     headers: { ...headers, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: formData.title,
                         region_id: formData.region_id,
+                        office_id: formData.office_id,
                         category_name: formData.category_name,
                         classification_rule: formData.classification_rule,
-                        retention_period: formData.retention_period
+                        shelf: formData.shelf,
+
+                        retention_period: formData.retention_period,
+                        period_covered: formData.period_covered,
+                        volume: formData.volume,
+                        duplication: formData.duplication,
+                        time_value: formData.time_value,
+                        utility_value: formData.utility_value
                     })
                 });
             } else {
-                // --- CREATE (Multipart) ---
                 const data = new FormData();
                 Object.keys(formData).forEach(key => data.append(key, formData[key]));
-
                 res = await fetch('http://localhost:5000/api/records', {
                     method: 'POST',
-                    headers: headers, // Do not set Content-Type for FormData
+                    headers: headers,
                     body: data
                 });
             }
@@ -196,7 +393,16 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
             setUploadProgress(100);
 
             if (res.ok) {
-                setTimeout(() => { onSuccess(); onClose(); toast.success(isEditMode ? 'Record updated' : 'File uploaded successfully'); }, 500);
+                setTimeout(() => {
+                    onSuccess();
+                    onClose();
+                    // Professional Feedack: Explain visibility
+                    if (formData.is_restricted) {
+                        toast.success("Secure Upload Complete", { description: "File saved to Restricted Vault. Switch to Vault View to access." });
+                    } else {
+                        toast.success(isEditMode ? 'Record updated successfully' : 'File uploaded successfully');
+                    }
+                }, 500);
             } else {
                 const err = await res.json();
                 toast.error(err.message || "Operation failed.");
@@ -214,140 +420,307 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-zoom-in border border-white/20">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl flex flex-col max-h-[85vh] animate-zoom-in border border-white/20">
 
-                <div className="px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+                {/* HEADER */}
+                <div className="flex-none px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
                     <div>
-                        <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">{isEditMode ? 'Edit Metadata' : 'Archive Document'}</h2>
+                        <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">{isEditMode ? 'Edit Metadata' : 'Add Document'}</h2>
                         <p className="text-xs font-medium text-slate-500 mt-1 uppercase tracking-wider">{isEditMode ? 'Update record details' : 'Secure PDF Repository'}</p>
-                    </div>
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${isEditMode ? 'bg-amber-50 text-amber-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                        {isEditMode ?
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            :
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        }
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                {/* SCROLLABLE CONTENT */}
+                <div className="flex-1 overflow-y-auto min-h-0 relative custom-scrollbar">
+                    <form id="record-form" onSubmit={handleSubmit} className="p-8 space-y-6">
 
-                    {/* DROP ZONE (Hidden in Edit Mode) */}
-                    {!isEditMode ? (
-                        <div
-                            className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 group cursor-pointer
-                    ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50'}`}
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                        >
-                            <input type="file" required accept=".pdf,application/pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={(e) => e.target.files.length > 0 && validateAndSetFile(e.target.files[0])} />
+                        {/* 1. METADATA FIELDS */}
+                        <div className="space-y-4">
+                            {/* TITLE */}
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Document Title</label>
+                                <input required className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:font-normal" placeholder="Ex. Division Memorandum No. 123" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                                <p className="text-[10px] text-slate-400 mt-1 ml-1 text-right">Visible in search results</p>
+                            </div>
 
-                            {formData.file ? (
-                                <div className="flex items-center justify-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
-                                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            {/* HIERARCHY */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="group">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Province</label>
+                                    <div className="relative">
+                                        <select required disabled={user.role !== 'SUPER_ADMIN'} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 disabled:text-slate-500 appearance-none" value={formData.region_id} onChange={handleRegionChange}>
+                                            {user.role !== 'SUPER_ADMIN' && <option value={user.region_id}>My Province</option>}
+                                            {user.role === 'SUPER_ADMIN' && (
+                                                <>
+                                                    <option value="">Select Province...</option>
+                                                    {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                                                </>
+                                            )}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
                                     </div>
-                                    <div className="text-left">
-                                        <p className="text-sm font-bold text-slate-700 truncate max-w-[200px]">{formData.file.name}</p>
-                                        <p className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full inline-block mt-1">{formatBytes(formData.file.size)}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="group">
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Office / Division</label>
+                                        <div className="relative">
+                                            <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 appearance-none disabled:text-slate-400" value={selectedParentOffice} onChange={handleParentOfficeChange} disabled={!formData.region_id || (offices.length === 0 && !!formData.region_id)}>
+                                                <option value="">
+                                                    {formData.region_id && offices.length === 0 ? 'No Offices Available' : 'Select Office...'}
+                                                </option>
+                                                {offices.map(o => <option key={o.office_id} value={o.office_id}>{o.code}</option>)}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, file: null }) }} className="z-20 p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors"><svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
+
+                                    <div className="group">
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Unit / Section</label>
+                                        <div className="relative">
+                                            <select
+                                                disabled={!selectedParentOffice || subOffices.length === 0}
+                                                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 disabled:text-slate-400 appearance-none bg-indigo-50/10"
+                                                value={selectedSubOffice}
+                                                onChange={handleSubOfficeChange}
+                                            >
+                                                <option value="">{subOffices.length > 0 ? 'Select Unit...' : 'No Sub-Units'}</option>
+                                                {subOffices.map(s => <option key={s.office_id} value={s.office_id}>{s.code} - {s.name}</option>)}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* CLASSIFICATION */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="group">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Records Series Title</label>
+                                    <div className="relative">
+                                        <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none" value={formData.category_name} onChange={handleCategoryChange}>
+                                            <option value="">Select Category...</option>
+                                            {codexCategories.map(c => <option key={c.category_id} value={c.name}>{c.name}</option>)}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="group">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Description</label>
+                                    <div className="relative">
+                                        <select required disabled={!formData.category_name} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 appearance-none" value={formData.classification_rule} onChange={handleClassificationChange}>
+                                            <option value="">Select Type...</option>
+                                            {availableTypes.map(t => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="group relative">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Location of Records</label>
+                                    <div className="relative">
+                                        <input
+                                            className="w-full pl-4 pr-10 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:font-normal"
+                                            placeholder="Type or select shelf..."
+                                            value={formData.shelf}
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, shelf: e.target.value });
+                                                setShowShelfSuggestions(true);
+                                            }}
+                                            onFocus={() => setShowShelfSuggestions(true)}
+                                            onBlur={() => setTimeout(() => setShowShelfSuggestions(false), 200)}
+                                        />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                                        </div>
+
+                                        {/* SUGGESTIONS DROPDOWN */}
+                                        {showShelfSuggestions && (
+                                            <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto z-30 animate-fade-in divide-y divide-slate-50">
+                                                {availableShelves.filter(s => s && s.toLowerCase().includes(formData.shelf.toLowerCase())).map((shelf, idx) => (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onMouseDown={(e) => e.preventDefault()} // Prevent blur
+                                                        onClick={() => {
+                                                            setFormData({ ...formData, shelf: shelf });
+                                                            setShowShelfSuggestions(false);
+                                                        }}
+                                                        className="w-full text-left px-4 py-3 text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center gap-2"
+                                                    >
+                                                        <span className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs shrink-0">🗄️</span>
+                                                        {shelf}
+                                                    </button>
+                                                ))}
+                                                {availableShelves.length === 0 && (
+                                                    <div className="px-4 py-3 text-xs text-slate-400 italic text-center">No existing shelves in this category</div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="group">
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Retention Period</label>
+                                    <div className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 bg-slate-50 flex items-center justify-between">
+                                        <span>{formData.retention_period || 'Auto-calculated'}</span>
+                                        <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded text-slate-500">READ-ONLY</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. OTHER DETAILS */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Period Covered</label>
+                                <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. 2023-2024" value={formData.period_covered} onChange={(e) => setFormData({ ...formData, period_covered: e.target.value })} />
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Volume (cu. m)</label>
+                                <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="0.00" value={formData.volume} onChange={(e) => setFormData({ ...formData, volume: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Duplication</label>
+                                <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" placeholder="e.g. 3 Copies" value={formData.duplication} onChange={(e) => setFormData({ ...formData, duplication: e.target.value })} />
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Time Value</label>
+                                <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none" value={formData.time_value} onChange={(e) => setFormData({ ...formData, time_value: e.target.value })}>
+                                    <option value="" disabled>Select...</option>
+                                    <option value="T">Temporary</option>
+                                    <option value="P">Permanent</option>
+                                </select>
+                            </div>
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Utility Value</label>
+                                <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none" value={formData.utility_value} onChange={(e) => setFormData({ ...formData, utility_value: e.target.value })}>
+                                    <option value="" disabled>Select...</option>
+                                    <option value="Adm">Administrative</option>
+                                    <option value="F">Fiscal</option>
+                                    <option value="L">Legal</option>
+                                    <option value="Arc">Archival</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* 3. FILE UPLOAD & RESTRICTION */}
+                        <div className="space-y-4">
+                            {/* DROP ZONE (MOVED HERE) */}
+                            {!isEditMode || formData.replaceFile ? (
+                                <div
+                                    className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 group cursor-pointer
+                                    ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50'}`}
+                                    onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                                >
+                                    <input type="file" required={!isEditMode} accept=".pdf,application/pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={(e) => e.target.files.length > 0 && validateAndSetFile(e.target.files[0])} />
+
+                                    {formData.file ? (
+                                        <div className="flex items-center justify-center gap-4">
+                                            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-sm font-bold text-slate-700 truncate max-w-[200px]">{formData.file.name}</p>
+                                                <p className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full inline-block mt-1">{formatBytes(formData.file.size)}</p>
+                                            </div>
+                                            <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, file: null }) }} className="z-20 p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors"><svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 pointer-events-none">
+                                            <div className="mx-auto w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                            </div>
+                                            <p className="text-sm font-bold text-indigo-600">{isEditMode ? 'Click to replace file' : 'Click to upload PDF'}</p>
+                                            {isEditMode && <button type="button" onClick={() => setFormData({ ...formData, replaceFile: false })} className="pointer-events-auto text-xs text-slate-400 underline hover:text-slate-600">Cancel Replace</button>}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="space-y-2 pointer-events-none">
-                                    <div className="mx-auto w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between group hover:border-indigo-200 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-amber-100 text-amber-600 p-2.5 rounded-lg shrink-0">
+                                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-0.5">Current File</p>
+                                            <a href={`http://localhost:5000/api/records/stream/${recordToEdit.file_path}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:underline truncate max-w-[200px] block" title="View File">
+                                                {recordToEdit.file_path || `${recordToEdit.title}.pdf`}
+                                            </a>
+                                            <p className="text-[10px] font-medium text-slate-500 mt-0.5">{formatBytes(recordToEdit.file_size)} • {recordToEdit.file_type || 'PDF'}</p>
+                                        </div>
                                     </div>
-                                    <p className="text-sm font-bold text-indigo-600">Click to upload PDF</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, replaceFile: true })}
+                                        className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-all shadow-sm"
+                                    >
+                                        Replace
+                                    </button>
+                                </div>
+                            )}
+
+                            {!isEditMode && (
+                                <div className={`p-4 rounded-xl border transition-all duration-300 ${formData.is_restricted ? 'bg-red-50 border-red-200 shadow-sm' : 'bg-slate-50 border-slate-200'}`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg transition-colors ${formData.is_restricted ? 'bg-white text-red-600 shadow-sm' : 'bg-white text-slate-400'}`}>
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            </div>
+                                            <div>
+                                                <p className={`text-sm font-bold ${formData.is_restricted ? 'text-red-700' : 'text-slate-600'}`}>Restricted Access</p>
+                                                <p className="text-[10px] text-slate-400">
+                                                    {formData.is_restricted ? 'Protected by Global Master Password' : 'Public to authenticated users'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={formData.is_restricted} onChange={(e) => setFormData({ ...formData, is_restricted: e.target.checked })} />
+                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                                        </label>
+                                    </div>
+
+                                    {formData.is_restricted && (
+                                        <div className="mt-3 animate-fade-in text-xs text-red-600/80 font-medium px-1 flex gap-2">
+                                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <p>File will be encrypted and moved to the <strong>Restricted Vault</strong>.</p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    ) : (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-3">
-                            <div className="bg-amber-100 text-amber-600 p-2 rounded-lg"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg></div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase">Current File (Cannot Change)</p>
-                                <p className="text-sm font-bold text-slate-700">{recordToEdit.title}.pdf</p>
-                            </div>
-                        </div>
-                    )}
+                    </form>
+                </div>
 
-                    {/* METADATA FIELDS */}
-                    <div className="space-y-3">
-                        <input required className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500/20" placeholder="Document Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                {/* FOOTER ACTIONS */}
+                <div className="flex-none p-6 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
+                    {loading && <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden mb-4"><div className={`h-1.5 rounded-full transition-all duration-300 ${isEditMode ? 'bg-amber-500' : 'bg-indigo-600'}`} style={{ width: `${uploadProgress}%` }}></div></div>}
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <select required disabled={user.role !== 'SUPER_ADMIN'} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-50" value={formData.region_id} onChange={e => setFormData({ ...formData, region_id: e.target.value })}>
-                                {user.role !== 'SUPER_ADMIN' && <option value={user.region_id}>My Region</option>}
-                                {user.role === 'SUPER_ADMIN' && (
-                                    <>
-                                        <option value="">Select Region...</option>
-                                        {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                                    </>
-                                )}
-                            </select>
-
-                            <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium bg-white outline-none focus:ring-2 focus:ring-indigo-500/20" value={formData.category_name} onChange={handleCategoryChange}>
-                                <option value="">Select Category...</option>
-                                {codexCategories.map(c => <option key={c.category_id} value={c.name}>{c.name}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <select required disabled={!formData.category_name} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-50" value={formData.classification_rule} onChange={handleClassificationChange}>
-                                <option value="">Classification...</option>
-                                {availableTypes.map(t => <option key={t.type_id} value={t.type_name}>{t.type_name}</option>)}
-                            </select>
-                            <input readOnly value={formData.retention_period || 'Retention'} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 bg-slate-50 outline-none" />
-                        </div>
-                    </div>
-
-                    {/* --- SECURITY SECTION (Only in Create Mode) --- */}
-                    {!isEditMode && (
-                        <div className={`p-4 rounded-xl border transition-all ${formData.is_restricted ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${formData.is_restricted ? 'bg-white text-red-600 shadow-sm' : 'bg-white text-slate-400'}`}>
-                                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className={`text-sm font-bold ${formData.is_restricted ? 'text-red-700' : 'text-slate-600'}`}>Restricted Access</p>
-                                        <p className="text-[10px] text-slate-400">Require password to view file</p>
-                                    </div>
-                                </div>
-
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" className="sr-only peer" checked={formData.is_restricted} onChange={(e) => setFormData({ ...formData, is_restricted: e.target.checked, file_password: '' })} />
-                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
-                                </label>
-                            </div>
-
-                            {formData.is_restricted && (
-                                <div className="mt-4 animate-fade-in-up">
-                                    <label className="block text-[10px] font-bold text-red-500 uppercase mb-1 ml-1">Set Access Password</label>
-                                    <input
-                                        type="password"
-                                        required={formData.is_restricted}
-                                        placeholder="Enter password..."
-                                        className="w-full px-4 py-2.5 bg-white border border-red-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-500/20 text-red-600 placeholder-red-300 font-bold"
-                                        value={formData.file_password}
-                                        onChange={(e) => setFormData({ ...formData, file_password: e.target.value })}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {loading && <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden"><div className={`h-1.5 rounded-full transition-all duration-300 ${isEditMode ? 'bg-amber-500' : 'bg-indigo-600'}`} style={{ width: `${uploadProgress}%` }}></div></div>}
-
-                    <div className="pt-1 flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 text-sm font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
-                        <button type="submit" disabled={loading} className={`flex-1 py-3 text-sm font-bold text-white rounded-xl shadow-lg ${isEditMode ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
-                            {loading ? (isEditMode ? 'Saving...' : 'Uploading...') : (isEditMode ? 'Save Changes' : 'Confirm Upload')}
+                    <div className="flex gap-3">
+                        <button type="button" onClick={onClose} className="flex-1 py-3.5 text-sm font-bold text-slate-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all">Cancel</button>
+                        <button type="submit" form="record-form" disabled={loading} className={`flex-1 py-3.5 text-sm font-bold text-white rounded-xl shadow-lg hover:-translate-y-0.5 transition-all ${isEditMode ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}>
+                            {loading ? (isEditMode ? 'Saving Changes...' : 'Uploading File...') : (isEditMode ? 'Save Changes' : 'Confirm Upload')}
                         </button>
                     </div>
-                </form>
+                </div>
+
             </div>
         </div>
     );

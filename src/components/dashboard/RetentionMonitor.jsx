@@ -1,10 +1,23 @@
 import { useNavigate } from 'react-router-dom';
 
+// Lock icon for restricted files
+const LockIcon = () => (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+);
+
 const RetentionMonitor = ({ disposalQueue, darkMode = false }) => {
     const navigate = useNavigate();
 
-    const handleReview = (recordId) => {
-        navigate(`/registry?view=${recordId}`);
+    const handleReview = (record) => {
+        if (record.is_restricted) {
+            // Navigate to registry with restricted vault context
+            // The user will need to unlock the vault to view this file
+            navigate(`/registry?vault=true&view=${record.record_id}`);
+        } else {
+            navigate(`/registry?view=${record.record_id}`);
+        }
     };
 
     const getStatus = (date) => {
@@ -32,10 +45,11 @@ const RetentionMonitor = ({ disposalQueue, darkMode = false }) => {
         <div className="flex flex-col gap-4 h-full overflow-y-auto custom-scrollbar pr-2">
             {disposalQueue.map((rec) => {
                 const status = getStatus(rec.disposal_date);
+                const isRestricted = rec.is_restricted;
                 return (
                     <div
                         key={rec.record_id}
-                        onClick={() => handleReview(rec.record_id)}
+                        onClick={() => handleReview(rec)}
                         className={`group relative border p-5 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
                             }`}
                     >
@@ -45,6 +59,11 @@ const RetentionMonitor = ({ disposalQueue, darkMode = false }) => {
                                     <span className={`text-xs font-extrabold tracking-wider px-3 py-1 rounded-full border ${status.color}`}>
                                         {status.daysLabel.toUpperCase()}
                                     </span>
+                                    {isRestricted && (
+                                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200 flex items-center gap-1">
+                                            <LockIcon /> RESTRICTED
+                                        </span>
+                                    )}
                                     <span className="text-sm font-medium text-slate-500">
                                         Due: {new Date(rec.disposal_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                     </span>
@@ -54,13 +73,13 @@ const RetentionMonitor = ({ disposalQueue, darkMode = false }) => {
                                 </h4>
                             </div>
 
-                            <button className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                            <button className={`h-10 w-10 flex items-center justify-center rounded-xl shadow-sm transition-all ${isRestricted ? 'bg-red-50 text-red-400 group-hover:bg-red-600 group-hover:text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white'}`}>
                                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                             </button>
                         </div>
 
                         {/* Subtle side accent */}
-                        <div className={`absolute left-0 top-3 bottom-3 w-1.5 rounded-r-lg ${status.label === 'EXPIRED' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
+                        <div className={`absolute left-0 top-3 bottom-3 w-1.5 rounded-r-lg ${isRestricted ? 'bg-red-500' : status.label === 'EXPIRED' ? 'bg-rose-500' : 'bg-amber-500'}`}></div>
                     </div>
                 );
             })}

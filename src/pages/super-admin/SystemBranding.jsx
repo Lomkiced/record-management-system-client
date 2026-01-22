@@ -111,6 +111,9 @@ const SystemBranding = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* MASTER PASSWORD - Restricted Vault Security */}
+                    <MasterPasswordSection />
                 </div>
 
                 {/* PREVIEW */}
@@ -128,6 +131,112 @@ const SystemBranding = () => {
                     </div>
                 </div>
             </div>
+        </div>
+    );
+};
+
+// Master Password Section Component
+const MasterPasswordSection = () => {
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isConfigured, setIsConfigured] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        checkPasswordStatus();
+    }, []);
+
+    const checkPasswordStatus = async () => {
+        try {
+            const token = localStorage.getItem('dost_token');
+            const res = await fetch('http://localhost:5000/api/settings/master-password/status', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            setIsConfigured(data.is_configured);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSave = async () => {
+        if (password.length < 8) {
+            toast.error("Password must be at least 8 characters.");
+            return;
+        }
+        if (password !== confirmPassword) {
+            toast.error("Passwords do not match.");
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const token = localStorage.getItem('dost_token');
+            const res = await fetch('http://localhost:5000/api/settings/master-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ password, confirm_password: confirmPassword })
+            });
+
+            if (res.ok) {
+                toast.success("Master password updated successfully!");
+                setPassword('');
+                setConfirmPassword('');
+                setIsConfigured(true);
+            } else {
+                const data = await res.json();
+                toast.error(data.message || "Failed to update password.");
+            }
+        } catch (err) {
+            toast.error("Server connection failed.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="bg-gradient-to-br from-red-50 to-rose-50 p-6 rounded-2xl border-2 border-red-200 shadow-sm">
+            <h3 className="font-bold text-red-800 mb-2 flex items-center gap-2">
+                <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" /></svg>
+                Restricted Vault Security
+            </h3>
+            <p className="text-xs text-red-600 mb-4">
+                {isConfigured
+                    ? "✓ Master password is configured. Enter a new password to change it."
+                    : "⚠ No master password set. Configure to enable the Restricted Vault."}
+            </p>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label className="text-xs font-bold text-red-500 uppercase block mb-1">New Password</label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Min 8 characters"
+                        className="w-full border border-red-200 rounded-lg p-3 font-bold text-slate-700 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-red-500 uppercase block mb-1">Confirm Password</label>
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        className="w-full border border-red-200 rounded-lg p-3 font-bold text-slate-700 focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none"
+                    />
+                </div>
+            </div>
+            <button
+                onClick={handleSave}
+                disabled={saving || !password || !confirmPassword}
+                className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all disabled:opacity-50"
+            >
+                {saving ? 'Saving...' : (isConfigured ? '🔒 Update Master Password' : '🔒 Set Master Password')}
+            </button>
         </div>
     );
 };

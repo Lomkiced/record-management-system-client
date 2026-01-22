@@ -61,12 +61,23 @@ export const CodexProvider = ({ children }) => {
   };
 
   const deleteCategory = async (id) => {
-    const token = getToken();
-    await fetch(`http://localhost:5000/api/codex/categories/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    fetchData();
+    try {
+      const token = getToken();
+      const response = await fetch(`http://localhost:5000/api/codex/categories/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        toast.success("Category deleted successfully");
+        fetchData();
+      } else {
+        const err = await response.json();
+        toast.error(err.message || "Failed to delete category");
+      }
+    } catch (error) {
+      console.error("Delete Category Error:", error);
+      toast.error("Server error while deleting category");
+    }
   };
 
   const addType = async (data) => {
@@ -79,18 +90,31 @@ export const CodexProvider = ({ children }) => {
 
     if (response.ok) {
       fetchData();
+      toast.success("Document type added successfully");
       return true;
     }
+    toast.error("Failed to add document type");
     return false;
   };
 
   const deleteType = async (id) => {
-    const token = getToken();
-    await fetch(`http://localhost:5000/api/codex/types/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    fetchData();
+    try {
+      const token = getToken();
+      const response = await fetch(`http://localhost:5000/api/codex/types/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        toast.success("Document type deleted successfully");
+        fetchData();
+      } else {
+        const err = await response.json();
+        toast.error(err.message || "Failed to delete document type");
+      }
+    } catch (error) {
+      console.error("Delete Type Error:", error);
+      toast.error("Server error while deleting type");
+    }
   };
 
   return (

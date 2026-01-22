@@ -123,7 +123,7 @@ const RecordForm = ({ onClose, onSave, initialData, targetRegion }) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
 
           {/* Region Selection (Super Admin) */}
-          {user.role === 'Super Admin' ? (
+          {user.role === 'SUPER_ADMIN' ? (
             <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
               <label className="block text-[10px] font-bold text-blue-600 uppercase mb-1 tracking-wide">
                 Destination Region (Upload Target)
