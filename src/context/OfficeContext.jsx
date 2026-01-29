@@ -20,7 +20,7 @@ export const OfficeProvider = ({ children }) => {
         setLoading(true);
         try {
             const token = getToken();
-            let url = 'http://localhost:5000/api/offices';
+            let url = '/api/offices';
 
             // Build Query Params
             const searchParams = new URLSearchParams();
@@ -76,7 +76,7 @@ export const OfficeProvider = ({ children }) => {
     const addOffice = async (data) => {
         try {
             const token = getToken();
-            const response = await fetch('http://localhost:5000/api/offices', {
+            const response = await fetch('/api/offices', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ export const OfficeProvider = ({ children }) => {
     const updateOffice = async (id, data) => {
         try {
             const token = getToken();
-            const response = await fetch(`http://localhost:5000/api/offices/${id}`, {
+            const response = await fetch(`/api/offices/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -133,7 +133,7 @@ export const OfficeProvider = ({ children }) => {
     const deleteOffice = async (id) => {
         try {
             const token = getToken();
-            const response = await fetch(`http://localhost:5000/api/offices/${id}`, {
+            const response = await fetch(`/api/offices/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

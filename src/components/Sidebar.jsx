@@ -65,7 +65,7 @@ const Sidebar = () => {
 
     const ROLE_MENUS = {
       'SUPER_ADMIN': [
-        { category: 'Overview', items: [{ path: '/super-admin', label: 'Command Center', icon: Icons.Dashboard }, { path: '/global-map', label: 'Global Map', icon: Icons.Globe }] },
+        { category: 'Overview', items: [{ path: '/super-admin', label: 'Command Center', icon: Icons.Dashboard }] },
         { category: 'Governance', items: [{ path: '/regions', label: 'Regional Units', icon: Icons.Map }, { path: '/offices', label: 'Offices', icon: Icons.Building }, { path: '/registry', label: 'Registry', icon: Icons.Folder }, { path: '/archive', label: 'Archive', icon: Icons.Archive }, { path: '/codex', label: "Classification", icon: Icons.Book }, { path: '/users', label: 'Personnel', icon: Icons.Users }] },
         { category: 'Security', items: [{ path: '/audit', label: 'Audit Logs', icon: Icons.Shield }, { path: '/branding', label: 'System Branding', icon: Icons.Palette }] }
       ],

@@ -11,13 +11,13 @@ export const UserProvider = ({ children }) => {
   const fetchUsers = async () => {
     // 🔒 GUARD CLAUSE: Don't fetch if user is Staff or not logged in
     if (!user || user.role === 'STAFF') {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
 
     try {
       const token = localStorage.getItem('dost_token');
-      const res = await fetch('http://localhost:5000/api/users', {
+      const res = await fetch('/api/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

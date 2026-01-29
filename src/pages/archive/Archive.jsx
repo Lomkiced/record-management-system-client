@@ -92,7 +92,7 @@ const Archive = () => {
     };
 
     const handleView = (record) => {
-        const baseUrl = 'http://localhost:5000';
+        const baseUrl = ''; // Relative path for Nginx/Vite proxy
         const isRestricted = record.is_restricted;
         const filePath = isRestricted ? `/uploads/restricted/${record.file_path}` : `/uploads/${record.file_path}`;
         setViewerUrl(`${baseUrl}${filePath}`);

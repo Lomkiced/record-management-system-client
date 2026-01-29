@@ -41,7 +41,7 @@ const StaffDashboard = () => {
     const refreshDashboard = useCallback(async () => {
         try {
             const token = localStorage.getItem('dost_token');
-            const res = await fetch(`http://localhost:5000/api/dashboard/stats?t=${new Date().getTime()}`, {
+            const res = await fetch(`/api/dashboard/stats?t=${new Date().getTime()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 

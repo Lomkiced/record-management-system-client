@@ -19,7 +19,6 @@ import SuperAdminDashboard from './pages/dashboard/SuperAdminDashboard';
 import Codex from './pages/registry/Codex';
 import Registry from './pages/registry/Registry';
 import AuditTrails from './pages/super-admin/AuditTrails';
-import GlobalMap from './pages/super-admin/GlobalMap';
 import RegionManager from './pages/super-admin/RegionManager';
 import SystemBranding from './pages/super-admin/SystemBranding'; // <--- NEW IMPORT
 import UserList from './pages/super-admin/UserList';
@@ -72,11 +71,6 @@ function App() {
                             <Route path="super-admin" element={
                               <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                                 <SuperAdminDashboard />
-                              </ProtectedRoute>
-                            } />
-                            <Route path="global-map" element={
-                              <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
-                                <GlobalMap />
                               </ProtectedRoute>
                             } />
                             <Route path="users" element={

@@ -41,7 +41,7 @@ const SystemBranding = () => {
 
         try {
             const token = localStorage.getItem('dost_token');
-            const res = await fetch('http://localhost:5000/api/settings', {
+            const res = await fetch('/api/settings', {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData
@@ -149,7 +149,7 @@ const MasterPasswordSection = () => {
     const checkPasswordStatus = async () => {
         try {
             const token = localStorage.getItem('dost_token');
-            const res = await fetch('http://localhost:5000/api/settings/master-password/status', {
+            const res = await fetch('/api/settings/master-password/status', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
@@ -172,7 +172,7 @@ const MasterPasswordSection = () => {
         setSaving(true);
         try {
             const token = localStorage.getItem('dost_token');
-            const res = await fetch('http://localhost:5000/api/settings/master-password', {
+            const res = await fetch('/api/settings/master-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

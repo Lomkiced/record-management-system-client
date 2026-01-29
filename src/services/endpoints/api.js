@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // --- STRATEGY: CENTRALIZED CONFIGURATION ---
-const API_URL = "http://localhost:5000/api";
+const API_URL = "/api";
 const TOKEN_KEY = 'dost_token'; // Matches your Contexts
 
 // 1. Create Axios Instance

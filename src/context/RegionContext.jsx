@@ -16,7 +16,7 @@ export const RegionProvider = ({ children }) => {
     const fetchRegions = async () => {
         try {
             const token = getToken();
-            const response = await fetch('http://localhost:5000/api/regions', {
+            const response = await fetch('/api/regions', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -36,7 +36,7 @@ export const RegionProvider = ({ children }) => {
             const token = getToken(); // <--- DIRECT FETCH FROM STORAGE
             console.log("Sending Token:", token); // Debugging
 
-            const response = await fetch('http://localhost:5000/api/regions', {
+            const response = await fetch('/api/regions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export const RegionProvider = ({ children }) => {
     const updateRegion = async (id, formData) => {
         try {
             const token = getToken();
-            const response = await fetch(`http://localhost:5000/api/regions/${id}`, {
+            const response = await fetch(`/api/regions/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ export const RegionProvider = ({ children }) => {
     const deleteRegion = async (id) => {
         try {
             const token = getToken();
-            const response = await fetch(`http://localhost:5000/api/regions/${id}`, {
+            const response = await fetch(`/api/regions/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

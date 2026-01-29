@@ -19,10 +19,10 @@ export const CodexProvider = ({ children }) => {
 
       console.log("Loading Codex Data..."); // Debug Log
 
-      const catRes = await fetch('http://localhost:5000/api/codex/categories', {
+      const catRes = await fetch('/api/codex/categories', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const typeRes = await fetch('http://localhost:5000/api/codex/types', {
+      const typeRes = await fetch('/api/codex/types', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -44,7 +44,7 @@ export const CodexProvider = ({ children }) => {
   // 2. ADD CATEGORY (Wait for Server)
   const addCategory = async (data) => {
     const token = getToken();
-    const response = await fetch('http://localhost:5000/api/codex/categories', {
+    const response = await fetch('/api/codex/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(data)
@@ -63,7 +63,7 @@ export const CodexProvider = ({ children }) => {
   const deleteCategory = async (id) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/codex/categories/${id}`, {
+      const response = await fetch(`/api/codex/categories/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -82,7 +82,7 @@ export const CodexProvider = ({ children }) => {
 
   const addType = async (data) => {
     const token = getToken();
-    const response = await fetch('http://localhost:5000/api/codex/types', {
+    const response = await fetch('/api/codex/types', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(data)
@@ -100,7 +100,7 @@ export const CodexProvider = ({ children }) => {
   const deleteType = async (id) => {
     try {
       const token = getToken();
-      const response = await fetch(`http://localhost:5000/api/codex/types/${id}`, {
+      const response = await fetch(`/api/codex/types/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

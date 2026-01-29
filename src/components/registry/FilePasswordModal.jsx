@@ -12,11 +12,11 @@ const FilePasswordModal = ({ isOpen, onClose, onSuccess, record }) => {
 
         try {
             const token = localStorage.getItem('dost_token');
-            const res = await fetch(`http://localhost:5000/api/records/${record.record_id}/verify`, {
+            const res = await fetch(`/api/records/${record.record_id}/verify`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}` 
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ password })
             });
@@ -52,7 +52,7 @@ const FilePasswordModal = ({ isOpen, onClose, onSuccess, record }) => {
                 </div>
                 <form onSubmit={handleSubmit} className="p-6">
                     <div className="mb-4">
-                        <input type="password" autoFocus required placeholder="Enter Access Password" 
+                        <input type="password" autoFocus required placeholder="Enter Access Password"
                             className="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all font-bold text-center tracking-widest"
                             value={password} onChange={(e) => setPassword(e.target.value)} />
                         {error && <p className="text-xs text-red-500 font-bold mt-2 text-center animate-pulse">{error}</p>}

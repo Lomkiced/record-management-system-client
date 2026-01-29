@@ -41,8 +41,8 @@ const UserList = () => {
             const headers = { 'Authorization': `Bearer ${token}` };
 
             const [uRes, rRes] = await Promise.all([
-                fetch('http://localhost:5000/api/users', { headers }),
-                fetch('http://localhost:5000/api/regions', { headers })
+                fetch('/api/users', { headers }),
+                fetch('/api/regions', { headers })
             ]);
 
             const usersData = await uRes.json();
@@ -118,7 +118,7 @@ const UserList = () => {
     const handleSaveUser = async (formData) => {
         const isEdit = !!targetUser;
         const token = localStorage.getItem('dost_token');
-        const url = isEdit ? `http://localhost:5000/api/users/${targetUser.user_id}` : 'http://localhost:5000/api/users';
+        const url = isEdit ? `/api/users/${targetUser.user_id}` : '/api/users';
         const method = isEdit ? 'PUT' : 'POST';
 
         try {
@@ -154,7 +154,7 @@ const UserList = () => {
 
         if (isConfirmed) {
             const token = localStorage.getItem('dost_token');
-            await fetch(`http://localhost:5000/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             fetchData();
             toast.success("User removed from system");
         }

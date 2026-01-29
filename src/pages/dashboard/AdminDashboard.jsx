@@ -35,7 +35,7 @@ const AdminDashboard = () => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('dost_token');
-        const res = await fetch('http://localhost:5000/api/dashboard/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch('/api/dashboard/stats', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
           setStats(data);

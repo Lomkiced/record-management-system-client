@@ -442,7 +442,7 @@ const Registry = () => {
   const handleVaultUnlock = async (password) => {
     try {
       const token = localStorage.getItem('dost_token');
-      const res = await fetch('http://localhost:5000/api/settings/vault/verify', {
+      const res = await fetch('/api/settings/vault/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ password })
@@ -554,7 +554,7 @@ const Registry = () => {
       setSelectedRestrictedRecord(record);
       setPasswordModalOpen(true);
     } else {
-      const url = `http://localhost:5000/api/records/stream/${record.file_path}`;
+      const url = `/api/records/stream/${record.file_path}`;
       setViewerUrl(url);
       setViewerFile(record);
       setViewerOpen(true);
@@ -562,7 +562,7 @@ const Registry = () => {
   };
 
   const handleUnlockSuccess = (filePath, accessToken) => {
-    const url = `http://localhost:5000/api/records/stream/${filePath}?token=${accessToken}`;
+    const url = `/api/records/stream/${filePath}?token=${accessToken}`;
     setViewerUrl(url);
     setViewerFile(selectedRestrictedRecord);
     setViewerOpen(true);

@@ -45,8 +45,8 @@ const AuditTrails = () => {
       });
 
       const [logRes, regRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/audit/filter?${params}`, { headers }),
-        fetch('http://localhost:5000/api/regions', { headers })
+        fetch(`/api/audit/filter?${params}`, { headers }),
+        fetch('/api/regions', { headers })
       ]);
 
       if (logRes.ok) {

@@ -87,9 +87,9 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                 const headers = { 'Authorization': `Bearer ${token}` };
                 try {
                     const [reg, cat, typ] = await Promise.all([
-                        fetch('http://localhost:5000/api/regions', { headers }),
-                        fetch('http://localhost:5000/api/codex/categories', { headers }),
-                        fetch('http://localhost:5000/api/codex/types', { headers })
+                        fetch('/api/regions', { headers }),
+                        fetch('/api/codex/categories', { headers }),
+                        fetch('/api/codex/types', { headers })
                     ]);
 
                     const categoriesData = await cat.json();
@@ -128,7 +128,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                         // Determine Parent/Sub Office Logic for Edit
                         if (recordToEdit.office_id) {
                             // Fetch specific office details to check if it has a parent
-                            const res = await fetch(`http://localhost:5000/api/offices/${recordToEdit.office_id}`, { headers });
+                            const res = await fetch(`/api/offices/${recordToEdit.office_id}`, { headers });
                             const output = await res.json();
 
                             if (output.parent_id) {
@@ -360,7 +360,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
             let res;
 
             if (isEditMode) {
-                res = await fetch(`http://localhost:5000/api/records/${recordToEdit.record_id}`, {
+                res = await fetch(`/api/records/${recordToEdit.record_id}`, {
                     method: 'PUT',
                     headers: { ...headers, 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -382,7 +382,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
             } else {
                 const data = new FormData();
                 Object.keys(formData).forEach(key => data.append(key, formData[key]));
-                res = await fetch('http://localhost:5000/api/records', {
+                res = await fetch('/api/records', {
                     method: 'POST',
                     headers: headers,
                     body: data
@@ -404,8 +404,22 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                     }
                 }, 500);
             } else {
-                const err = await res.json();
-                toast.error(err.message || "Operation failed.");
+                // ROBUST ERROR HANDLING (Handles Nginx 413 HTML responses)
+                const contentType = res.headers.get("content-type");
+                let errorMessage = "Operation failed";
+
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const err = await res.json();
+                    errorMessage = err.message || errorMessage;
+                } else {
+                    const text = await res.text();
+                    if (res.status === 413) errorMessage = "File too large (Limit: 50MB)";
+                    else if (res.status === 502) errorMessage = "Server unavailable (502)";
+                    else errorMessage = `Server Error (${res.status})`;
+                    console.error("Non-JSON Error:", text);
+                }
+
+                toast.error(errorMessage);
                 setUploadProgress(0);
             }
         } catch (err) {
@@ -660,7 +674,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                                         </div>
                                         <div>
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-0.5">Current File</p>
-                                            <a href={`http://localhost:5000/api/records/stream/${recordToEdit.file_path}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:underline truncate max-w-[200px] block" title="View File">
+                                            <a href={`/api/records/stream/${recordToEdit.file_path}`} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:underline truncate max-w-[200px] block" title="View File">
                                                 {recordToEdit.file_path || `${recordToEdit.title}.pdf`}
                                             </a>
                                             <p className="text-[10px] font-medium text-slate-500 mt-0.5">{formatBytes(recordToEdit.file_size)} • {recordToEdit.file_type || 'PDF'}</p>

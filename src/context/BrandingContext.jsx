@@ -26,29 +26,29 @@ export const BrandingProvider = ({ children }) => {
     try {
       // 🛡️ TIMESTAMP: Force browser to ignore cache
       const timestamp = new Date().getTime();
-      const res = await fetch(`http://localhost:5000/api/settings?t=${timestamp}`, {
+      const res = await fetch(`/api/settings?t=${timestamp}`, {
         headers: { 'Cache-Control': 'no-cache' }
       });
-      
+
       const data = await res.json();
-      
+
       if (data) {
         // Robust URL Formatter
         const getUrl = (path) => {
-            if (!path) return null;
-            if (path.startsWith('http')) return path; // Already absolute
-            return `http://localhost:5000${path}`;   // Make absolute
+          if (!path) return null;
+          if (path.startsWith('http')) return path; // Already absolute
+          return path;   // Return relative path (Nginx/Vite handles it)
         };
 
         const newBrand = {
           systemName: data.system_name || 'DOST-RMS',
           orgName: data.org_name || 'Department of Science and Technology',
           welcomeMsg: data.welcome_msg || 'Sign in to access the system.',
-          
+
           // Append timestamp ONLY if a URL exists
           logoUrl: data.logo_url ? `${getUrl(data.logo_url)}?t=${timestamp}` : null,
           loginBgUrl: data.login_bg_url ? `${getUrl(data.login_bg_url)}?t=${timestamp}` : null,
-          
+
           primaryColor: data.primary_color || '#4f46e5',
           secondaryColor: data.secondary_color || '#0f172a'
         };
