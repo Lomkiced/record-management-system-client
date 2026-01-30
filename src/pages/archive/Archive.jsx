@@ -21,7 +21,7 @@ const Icons = {
 
 const Archive = () => {
     const { user } = useAuth();
-    const { records, fetchRecords, restoreRecord, deleteRecord, loading, pagination } = useRegistry();
+    const { archivedRecords, archivePagination, archiveLoading, fetchArchivedRecords, restoreRecord, deleteRecord } = useRegistry();
     const { regions } = useRegions();
     const { confirm } = useConfirmation();
 
@@ -35,26 +35,16 @@ const Archive = () => {
     const [isViewerOpen, setIsViewerOpen] = useState(false);
     const [viewerUrl, setViewerUrl] = useState('');
 
-    // Fetch archived records on mount and focus
+    // Fetch archived records on mount and filter change
     useEffect(() => {
-        const load = () => {
-            const params = {
-                page: currentPage,
-                status: 'Archived',
-                search: search,
-                region: filterRegion !== 'All' ? filterRegion : '',
-                category: filterCategory
-            };
-            fetchRecords(params);
+        const params = {
+            page: currentPage,
+            search: search,
+            region: filterRegion !== 'All' ? filterRegion : '',
+            category: filterCategory !== 'All' ? filterCategory : ''
         };
-
-        load();
-
-        // Auto-refresh when tab comes into focus (if user archived from another tab/window)
-        const onFocus = () => load();
-        window.addEventListener('focus', onFocus);
-        return () => window.removeEventListener('focus', onFocus);
-    }, [currentPage, search, filterRegion, filterCategory]);
+        fetchArchivedRecords(params);
+    }, [currentPage, search, filterRegion, filterCategory, fetchArchivedRecords]);
 
     // Handlers
     const handleRestore = async (record) => {
@@ -69,8 +59,6 @@ const Archive = () => {
         if (isConfirmed) {
             await restoreRecord(record.record_id);
             toast.success('Record restored successfully');
-            // Refresh the list
-            fetchRecords({ page: currentPage, status: 'Archived', search, region: filterRegion !== 'All' ? filterRegion : '', category: filterCategory });
         }
     };
 
@@ -86,16 +74,13 @@ const Archive = () => {
         if (isConfirmed) {
             await deleteRecord(record.record_id);
             toast.success('Record and file permanently deleted');
-            // Refresh the list
-            fetchRecords({ page: currentPage, status: 'Archived', search, region: filterRegion !== 'All' ? filterRegion : '', category: filterCategory });
         }
     };
 
     const handleView = (record) => {
-        const baseUrl = ''; // Relative path for Nginx/Vite proxy
-        const isRestricted = record.is_restricted;
-        const filePath = isRestricted ? `/uploads/restricted/${record.file_path}` : `/uploads/${record.file_path}`;
-        setViewerUrl(`${baseUrl}${filePath}`);
+        // Use streaming API endpoint for proper access control
+        const streamUrl = `/api/records/stream/${record.file_path}`;
+        setViewerUrl(streamUrl);
         setSelectedRecord(record);
         setIsViewerOpen(true);
     };
@@ -117,8 +102,8 @@ const Archive = () => {
         return `${size.toFixed(1)} ${units[unitIndex]}`;
     };
 
-    // Categories from records
-    const categories = [...new Set(records.map(r => r.category).filter(Boolean))];
+    // Categories from archived records
+    const categories = [...new Set(archivedRecords.map(r => r.category).filter(Boolean))];
 
     return (
         <div className="p-8 min-h-screen flex flex-col gap-6 animate-fade-in bg-slate-50/50">
@@ -135,7 +120,7 @@ const Archive = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-3 bg-amber-50 px-4 py-2 rounded-xl border border-amber-200">
-                    <span className="text-amber-600 font-bold text-2xl">{pagination.total || 0}</span>
+                    <span className="text-amber-600 font-bold text-2xl">{archivePagination.total || 0}</span>
                     <span className="text-amber-700 text-sm font-medium">Archived Files</span>
                 </div>
             </div>
@@ -188,7 +173,7 @@ const Archive = () => {
 
                 {/* Refresh */}
                 <button
-                    onClick={() => fetchRecords({ page: 1, status: 'Archived', search, region: filterRegion !== 'All' ? filterRegion : '', category: filterCategory })}
+                    onClick={() => fetchArchivedRecords({ page: 1, search, region: filterRegion !== 'All' ? filterRegion : '', category: filterCategory !== 'All' ? filterCategory : '' })}
                     className="p-2.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
                     title="Refresh"
                 >
@@ -211,11 +196,11 @@ const Archive = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {loading ? (
+                            {archiveLoading ? (
                                 [...Array(5)].map((_, i) => (
                                     <tr key={i} className="animate-pulse"><td colSpan="6" className="px-6 py-4"><div className="h-12 bg-slate-100 rounded-lg"></div></td></tr>
                                 ))
-                            ) : records.length === 0 ? (
+                            ) : archivedRecords.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="text-center py-24">
                                         <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -228,7 +213,7 @@ const Archive = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                records.map(record => (
+                                archivedRecords.map(record => (
                                     <tr key={record.record_id} className="hover:bg-slate-50/80 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
@@ -291,10 +276,10 @@ const Archive = () => {
                 </div>
 
                 {/* PAGINATION */}
-                {pagination.pages > 1 && (
+                {archivePagination.pages > 1 && (
                     <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
                         <p className="text-sm text-slate-500">
-                            Page <span className="font-bold">{pagination.current}</span> of <span className="font-bold">{pagination.pages}</span>
+                            Page <span className="font-bold">{archivePagination.current}</span> of <span className="font-bold">{archivePagination.pages}</span>
                         </p>
                         <div className="flex gap-2">
                             <button
@@ -305,8 +290,8 @@ const Archive = () => {
                                 Previous
                             </button>
                             <button
-                                onClick={() => setCurrentPage(p => Math.min(pagination.pages, p + 1))}
-                                disabled={currentPage === pagination.pages}
+                                onClick={() => setCurrentPage(p => Math.min(archivePagination.pages, p + 1))}
+                                disabled={currentPage === archivePagination.pages}
                                 className="px-3 py-1.5 text-sm font-bold text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Next
@@ -321,8 +306,7 @@ const Archive = () => {
                 isOpen={isViewerOpen}
                 onClose={() => { setIsViewerOpen(false); setSelectedRecord(null); }}
                 fileUrl={viewerUrl}
-                fileName={selectedRecord?.title}
-                fileType={selectedRecord?.file_type}
+                record={selectedRecord}
             />
         </div>
     );

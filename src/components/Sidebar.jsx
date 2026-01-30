@@ -99,7 +99,7 @@ const Sidebar = () => {
           </div>
           <div>
             <h1 className="text-white font-bold text-xl tracking-tight leading-none font-sans truncate w-32">{branding.systemName}</h1>
-            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.25em] mt-1 pl-0.5 truncate w-32">Enterprise</p>
+            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.25em] mt-1 pl-0.5 truncate w-32">Reion I</p>
           </div>
         </div>
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ${isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}>

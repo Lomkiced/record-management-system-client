@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 
 import { useSearchParams } from 'react-router-dom';
-import { getShelves, deleteShelf } from '../../services/endpoints/api';
 import { toast } from 'sonner';
 import DocumentViewerModal from '../../components/registry/DocumentViewerModal';
 import FilePasswordModal from '../../components/registry/FilePasswordModal';
@@ -10,10 +9,11 @@ import RecordModal from '../../components/registry/RecordModal';
 import RecordTable from '../../components/registry/RecordTable';
 import { useAuth } from '../../context/AuthContext';
 import { useCodex } from '../../context/CodexContext';
+import { useConfirmation } from '../../context/ConfirmationContext';
 import { useOffices } from '../../context/OfficeContext';
 import { useRegions } from '../../context/RegionContext';
 import { useRegistry } from '../../context/RegistryContext';
-import { useConfirmation } from '../../context/ConfirmationContext';
+import { deleteShelf, getShelves } from '../../services/endpoints/api';
 
 // --- ICONS ---
 const Icons = {
@@ -186,17 +186,34 @@ const Registry = () => {
         setActiveOffice(matchedOffice);
 
         // Fetch sub-offices if we found a parent match
-        const subs = await getSubOffices(matchedOffice.office_id);
-        setSubOffices(subs || []);
+        let subs = await getSubOffices(matchedOffice.office_id) || [];
+
+        // STAFF ACCESS CONTROL: Filter by assigned_office_ids
+        if (user?.assigned_office_ids?.length > 0) {
+          subs = subs.filter(s => user.assigned_office_ids.includes(s.office_id));
+        }
+        setSubOffices(subs);
 
         if (matchedSubOffice) {
           setActiveSubOffice(matchedSubOffice);
+        } else if (subs.length === 1) {
+          // Auto-select if only one sub-office is available
+          setActiveSubOffice(subs[0]);
         }
       } else if (regionOffices.length > 0) {
         // Fallback: select first office if no match found
         setActiveOffice(regionOffices[0]);
-        const subs = await getSubOffices(regionOffices[0].office_id);
-        setSubOffices(subs || []);
+        let subs = await getSubOffices(regionOffices[0].office_id) || [];
+
+        // STAFF ACCESS CONTROL: Filter by assigned_office_ids
+        if (user?.assigned_office_ids?.length > 0) {
+          subs = subs.filter(s => user.assigned_office_ids.includes(s.office_id));
+        }
+        setSubOffices(subs);
+
+        if (subs.length === 1) {
+          setActiveSubOffice(subs[0]);
+        }
       }
 
       setStaffAutoNavDone(true);
@@ -373,7 +390,14 @@ const Registry = () => {
       const subs = await getSubOffices(office.office_id);
 
       if (subs && subs.length > 0) {
-        setSubOffices(subs);
+        // STAFF ACCESS CONTROL: Filter sub-offices by assigned_office_ids
+        if (user?.role === 'STAFF' && user?.assigned_office_ids?.length > 0) {
+          const allowedSubs = subs.filter(s => user.assigned_office_ids.includes(s.office_id));
+          setSubOffices(allowedSubs);
+          console.log('[Registry] STAFF filtered sub-offices:', allowedSubs.map(s => s.code || s.name));
+        } else {
+          setSubOffices(subs);
+        }
       } else {
         setSubOffices([]);
       }
@@ -664,7 +688,7 @@ const Registry = () => {
                       ? (inRestrictedVault ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'bg-slate-800 text-white shadow-lg shadow-slate-200')
                       : (inRestrictedVault ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100')}`}
                 >
-                  <span>National</span>
+                  <span>Provinces</span>
                 </button>
               ) : (
                 /* Staff Locked Badge */

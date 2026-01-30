@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
 import { useOffices } from '../../context/OfficeContext';
 import { getShelves } from '../../services/endpoints/api';
+import { formatRetention, parseRetention } from '../../utils/retentionUtils';
 
 // --- HELPER: FORMAT BYTES ---
 const formatBytes = (bytes, decimals = 2) => {
@@ -17,24 +18,7 @@ const formatBytes = (bytes, decimals = 2) => {
 const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, currentOffice, currentSubOffice, currentCategory }) => {
     // ... (existing hooks) ...
 
-    // HELPER: Fix Grammar (1 Year vs 2 Years)
-    const formatRetention = (period) => {
-        if (!period || period === 'Permanent') return 'Permanent';
-        // Check if it matches "Number Unit" pattern
-        const match = period.match(/^(\d+)\s*(\w+)$/i);
-        if (match) {
-            const num = parseInt(match[1]);
-            const unit = match[2].toLowerCase(); // year, years, etc.
-
-            // Normalize unit base
-            let baseUnit = unit;
-            if (baseUnit.endsWith('s')) baseUnit = baseUnit.slice(0, -1);
-
-            if (num === 1) return `1 ${baseUnit}`; // 1 Year
-            return `${num} ${baseUnit}s`; // 5 Years
-        }
-        return period;
-    };
+    // HELPER: Fix Grammar (1 Year vs 2 Years) - REMOVED (Using Utility)
 
     // ... (state definitions) ...
 
@@ -275,7 +259,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
         setFormData(p => ({
             ...p,
             classification_rule: val,
-            retention_period: rule ? formatRetention(rule.retention_period || 'Permanent') : 'Permanent'
+            retention_period: rule ? formatRetention(parseRetention(rule.retention_period).value, parseRetention(rule.retention_period).unit) : 'Permanent'
         }));
     };
 

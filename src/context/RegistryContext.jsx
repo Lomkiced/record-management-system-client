@@ -14,6 +14,11 @@ export const RegistryProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
+  // ARCHIVE-SPECIFIC STATE (Separate from main registry to prevent race conditions)
+  const [archivedRecords, setArchivedRecords] = useState([]);
+  const [archivePagination, setArchivePagination] = useState({ total: 0, current: 1, pages: 1 });
+  const [archiveLoading, setArchiveLoading] = useState(false);
+
   // 1. FETCH RECORDS
   const fetchRecords = useCallback(async (overrideFilters = {}) => {
     try {
@@ -47,6 +52,31 @@ export const RegistryProvider = ({ children }) => {
   useEffect(() => {
     if (user) fetchRecords();
   }, [user]);
+
+  // DEDICATED ARCHIVE FETCH (Isolated state, no race conditions)
+  const fetchArchivedRecords = useCallback(async (params = {}) => {
+    try {
+      setArchiveLoading(true);
+      const result = await api.getRecords({
+        page: params.page || 1,
+        limit: 10,
+        search: params.search || '',
+        category: params.category || 'All',
+        status: 'Archived', // ALWAYS Archived
+        region: params.region || '',
+        office_id: params.office_id || ''
+      });
+
+      if (result) {
+        setArchivedRecords(result.data || []);
+        setArchivePagination(result.pagination || { total: 0, current: 1, pages: 1 });
+      }
+    } catch (err) {
+      console.error("Archive Load Error:", err);
+    } finally {
+      setArchiveLoading(false);
+    }
+  }, []);
 
   // 2. CRUD OPERATIONS
   const uploadRecord = async (formData) => {
@@ -99,7 +129,9 @@ export const RegistryProvider = ({ children }) => {
     try {
       await api.restoreRecord(id);
       toast.success("Record restored to active registry");
+      // Refresh both lists
       await fetchRecords();
+      await fetchArchivedRecords();
     } catch (err) {
       console.error(err);
       toast.error("Failed to restore record");
@@ -110,7 +142,8 @@ export const RegistryProvider = ({ children }) => {
   const deleteRecord = async (id) => {
     try {
       await api.deleteRecord(id);
-      await fetchRecords();
+      // Refresh archive list after deletion
+      await fetchArchivedRecords();
       return true;
     } catch (err) {
       console.error("Delete Error:", err);
@@ -143,7 +176,9 @@ export const RegistryProvider = ({ children }) => {
     <RegistryContext.Provider value={{
       records, pagination, filters, loading, uploading,
       fetchRecords, uploadRecord, updateRecord,
-      archiveRecord, restoreRecord, deleteRecord, destroyRecord
+      archiveRecord, restoreRecord, deleteRecord, destroyRecord,
+      // ARCHIVE-SPECIFIC EXPORTS
+      archivedRecords, archivePagination, archiveLoading, fetchArchivedRecords
     }}>
       {children}
     </RegistryContext.Provider>

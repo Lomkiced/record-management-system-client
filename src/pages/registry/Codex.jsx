@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { formatRetention, displayRetention, parseRetention } from '../../utils/retentionUtils';
 import { useAuth } from '../../context/AuthContext';
 import { useCodex } from '../../context/CodexContext';
-import { useRegions } from '../../context/RegionContext';
 import { useOffices } from '../../context/OfficeContext';
+import { useRegions } from '../../context/RegionContext';
 
 // --- ICONS ---
 const Icons = {
@@ -138,9 +139,7 @@ const Codex = () => {
     setIsSubmitting(true);
 
     // Construct retention period string (e.g., "5 Years", "30 Days", "Permanent")
-    const retentionPeriod = ruleForm.retention_unit === 'Permanent'
-      ? 'Permanent'
-      : `${ruleForm.retention_value} ${ruleForm.retention_unit}`;
+    const retentionPeriod = formatRetention(ruleForm.retention_value, ruleForm.retention_unit);
 
     await addType({
       type_name: ruleForm.type_name,
@@ -349,9 +348,9 @@ const Codex = () => {
                       <Icons.Clock /> Retention Period
                     </div>
                     <p className="mt-1 text-2xl font-black text-slate-700 tracking-tight">
-                      {rule.retention_period.replace(' Years', '').replace(' Days', '')}
+                      {displayRetention(rule.retention_period).split(' ')[0]}
                       <span className="text-sm font-bold text-slate-400 ml-1 uppercase">
-                        {rule.retention_period.includes('Permanent') ? '' : rule.retention_period.split(' ')[1]}
+                        {displayRetention(rule.retention_period).split(' ')[1] || ''}
                       </span>
                     </p>
                     {rule.retention_period === 'Permanent' && <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-md mt-1 inline-block">PERMANENT RECORD</span>}
@@ -517,7 +516,7 @@ const Codex = () => {
                     {ruleForm.retention_unit === 'Permanent'
                       ? 'This document type will be kept permanently and never expire.'
                       : ruleForm.retention_value
-                        ? `Documents of this type will be retained for ${ruleForm.retention_value} ${ruleForm.retention_unit.toLowerCase()} before disposal.`
+                        ? `Documents of this type will be retained for ${formatRetention(ruleForm.retention_value, ruleForm.retention_unit)}.`
                         : 'Enter a value to see the retention preview.'
                     }
                   </span>

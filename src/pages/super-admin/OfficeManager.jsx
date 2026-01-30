@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useOffices } from '../../context/OfficeContext';
-import { useRegions } from '../../context/RegionContext';
-import { useConfirmation } from '../../context/ConfirmationContext';
 import { toast } from 'sonner';
 import OfficeModal from '../../components/super-admin/OfficeModal';
+import { useConfirmation } from '../../context/ConfirmationContext';
+import { useOffices } from '../../context/OfficeContext';
+import { useRegions } from '../../context/RegionContext';
 
 // ... (Icons remain same)
 // --- PROFESSIONAL ICONS ---
@@ -208,20 +208,13 @@ const OfficeManager = () => {
                     bg="bg-indigo-50"
                 />
                 <StatCard
-                    label="Active Regions"
+                    label="Active Provinces"
                     value={activeRegions}
                     icon={<Icons.MapPin />}
                     color="text-emerald-600"
                     bg="bg-emerald-50"
                 />
-                <StatCard
-                    label="System Status"
-                    value="Operational"
-                    icon={<Icons.Refresh />}
-                    color="text-blue-600"
-                    bg="bg-blue-50"
-                    isText
-                />
+                
             </div>
 
             {/* 3. COMMAND BAR (Toolbar) */}

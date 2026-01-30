@@ -34,7 +34,8 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
         role: 'STAFF',
         office: '',
         region_id: '',
-        status: 'Active'
+        status: 'Active',
+        sub_unit_ids: []
     });
     const [showPassword, setShowPassword] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -44,21 +45,38 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
     const [offices, setOffices] = useState([]);
     const [subOffices, setSubOffices] = useState([]);
     const [selectedOfficeId, setSelectedOfficeId] = useState('');
-    const [selectedSubOfficeId, setSelectedSubOfficeId] = useState('');
+    const [selectedSubOfficeIds, setSelectedSubOfficeIds] = useState([]); // MULTI-SELECT
     const [loadingOffices, setLoadingOffices] = useState(false);
     const [loadingSubOffices, setLoadingSubOffices] = useState(false);
+
+    // --- NEW: Sub-Unit State ---
+    const [subUnits, setSubUnits] = useState([]);
+    const [loadingSubUnits, setLoadingSubUnits] = useState(false);
+    const [newSubUnitName, setNewSubUnitName] = useState('');
+    const [creatingSubUnit, setCreatingSubUnit] = useState(false);
+
+    // Track full objects { sub_unit_id, name } for display across office switches
+    const [selectedAssignments, setSelectedAssignments] = useState([]);
 
     useEffect(() => {
         if (isOpen) {
             if (editingUser) {
+                // Initialize sub-office selections from existing assignments
+                const initialSubOfficeIds = editingUser.sub_units
+                    ? editingUser.sub_units.map(u => u.id)
+                    : [];
+
+                setSelectedSubOfficeIds(initialSubOfficeIds);
                 setFormData({
                     ...editingUser,
-                    password: '' // Don't show hash
+                    password: '', // Don't show hash
+                    sub_unit_ids: initialSubOfficeIds
                 });
             } else {
                 // For new users: set region_id based on context
                 // Super Admin can select any region, non-Super Admin is locked to their region
                 const defaultRegionId = isSuperAdmin ? '' : (userRegionId || regions[0]?.id || '');
+                setSelectedAssignments([]);  // Reset for new user
                 setFormData({
                     name: '',
                     username: '',
@@ -66,15 +84,15 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                     role: 'STAFF',
                     office: '',
                     region_id: defaultRegionId,
-                    status: 'Active'
+                    status: 'Active',
+                    sub_unit_ids: []
                 });
             }
-            setStep(1);
             // Reset office selections
             setOffices([]);
             setSubOffices([]);
             setSelectedOfficeId('');
-            setSelectedSubOfficeId('');
+            if (!editingUser) setSelectedSubOfficeIds([]);
         }
     }, [isOpen, editingUser, isSuperAdmin, regions, userRegionId]);
 
@@ -85,7 +103,7 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
             setOffices([]);
             setSubOffices([]);
             setSelectedOfficeId('');
-            setSelectedSubOfficeId('');
+            setSelectedSubOfficeIds([]);
             return;
         }
 
@@ -108,7 +126,7 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
     useEffect(() => {
         if (!selectedOfficeId) {
             setSubOffices([]);
-            setSelectedSubOfficeId('');
+            // Don't clear selectedSubOfficeIds to allow multi-office assignment
             return;
         }
 
@@ -127,21 +145,136 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
         fetchSubOffices();
     }, [selectedOfficeId]); // Removed getSubOffices to prevent infinite loop
 
-    // --- NEW: Update formData.office when selections change ---
+    // --- NEW: Update formData.office when primary office changes ---
     useEffect(() => {
-        // Priority: Sub-office code > Office code
-        if (selectedSubOfficeId) {
-            const subOffice = subOffices.find(s => s.office_id == selectedSubOfficeId);
-            if (subOffice) {
-                setFormData(prev => ({ ...prev, office: subOffice.code || subOffice.name }));
-            }
-        } else if (selectedOfficeId) {
+        // Set primary office code (used for display)
+        if (selectedOfficeId) {
             const office = offices.find(o => o.office_id == selectedOfficeId);
             if (office) {
                 setFormData(prev => ({ ...prev, office: office.code || office.name }));
             }
         }
-    }, [selectedOfficeId, selectedSubOfficeId, offices, subOffices]);
+    }, [selectedOfficeId, offices]);
+
+    // --- Toggle Sub-Office Selection (Multi-Select) ---
+    const toggleSubOffice = (subOffice) => {
+        const officeId = subOffice.office_id;
+        setSelectedSubOfficeIds(prev => {
+            const newIds = prev.includes(officeId)
+                ? prev.filter(id => id !== officeId)
+                : [...prev, officeId];
+
+            // Also update formData.sub_unit_ids for backend saving
+            setFormData(f => ({ ...f, sub_unit_ids: newIds }));
+            return newIds;
+        });
+    };
+
+    // --- NEW: Fetch Sub-Units when Office Changes ---
+    useEffect(() => {
+        if (!selectedOfficeId) {
+            setSubUnits([]);
+            // Do NOT clear selectedAssignments or formData.sub_unit_ids here to allow multi-office selection
+            return;
+        }
+
+        const fetchSubUnits = async () => {
+            setLoadingSubUnits(true);
+            try {
+                const token = localStorage.getItem('dost_token');
+                const res = await fetch(`/api/sub-units?office_id=${selectedOfficeId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    setSubUnits(await res.json());
+                } else {
+                    setSubUnits([]);
+                }
+            } catch (e) {
+                console.error("Failed to fetch sub-units", e);
+                setSubUnits([]);
+            } finally {
+                setLoadingSubUnits(false);
+            }
+        };
+
+        // Only fetch if role is STAFF (Admins don't have sub-units usually)
+        if (formData.role === 'STAFF') {
+            fetchSubUnits();
+        } else {
+            setSubUnits([]);
+            // Do NOT clear selectedAssignments here either
+        }
+    }, [selectedOfficeId, formData.role]);
+
+    // --- Create New Sub-Unit Inline ---
+    const createSubUnit = async () => {
+        if (!newSubUnitName.trim() || !selectedOfficeId) return;
+        setCreatingSubUnit(true);
+        try {
+            const token = localStorage.getItem('dost_token');
+            const res = await fetch('/api/sub-units', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    office_id: parseInt(selectedOfficeId),
+                    name: newSubUnitName.trim()
+                })
+            });
+            if (res.ok) {
+                const created = await res.json();
+                // Add to subUnits list
+                setSubUnits(prev => [...prev, created]);
+                // Auto-select the new unit
+                const newId = created.sub_unit_id;
+                setFormData(prev => ({
+                    ...prev,
+                    sub_unit_ids: [...(prev.sub_unit_ids || []), newId]
+                }));
+                setSelectedAssignments(prev => [
+                    ...prev,
+                    { sub_unit_id: newId, name: created.name }
+                ]);
+                setNewSubUnitName('');
+                toast.success(`Created and assigned: ${created.name}`);
+            } else {
+                const err = await res.json();
+                toast.error(err.message || 'Failed to create sub-unit');
+            }
+        } catch (e) {
+            console.error('Create sub-unit error:', e);
+            toast.error('Network error creating sub-unit');
+        } finally {
+            setCreatingSubUnit(false);
+        }
+    };
+
+    // --- Toggle Sub-Unit Selection ---
+    const toggleSubUnit = (unit) => {
+        const currentIds = formData.sub_unit_ids || [];
+        const isCurrentlySelected = currentIds.includes(unit.sub_unit_id);
+
+        if (isCurrentlySelected) {
+            // Remove
+            setFormData(prev => ({
+                ...prev,
+                sub_unit_ids: prev.sub_unit_ids.filter(id => id !== unit.sub_unit_id)
+            }));
+            setSelectedAssignments(prev => prev.filter(a => a.sub_unit_id !== unit.sub_unit_id));
+        } else {
+            // Add
+            setFormData(prev => ({
+                ...prev,
+                sub_unit_ids: [...(prev.sub_unit_ids || []), unit.sub_unit_id]
+            }));
+            if (!selectedAssignments.some(a => a.sub_unit_id === unit.sub_unit_id)) {
+                setSelectedAssignments(prev => [...prev, { sub_unit_id: unit.sub_unit_id, name: unit.name }]);
+            }
+        }
+    };
 
     const generatePassword = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
@@ -372,31 +505,81 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                                         </div>
                                     </div>
 
-                                    {/* Sub-Office Dropdown (Only shows if sub-offices exist) */}
-                                    {selectedOfficeId && (
-                                        <div className="animate-fade-in">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
-                                                Unit / Sub-Office
-                                                <span className="font-normal text-slate-400 normal-case ml-1">(Optional)</span>
-                                            </label>
-                                            <div className="relative">
-                                                <select
-                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all outline-none cursor-pointer appearance-none disabled:opacity-60"
-                                                    value={selectedSubOfficeId}
-                                                    onChange={e => setSelectedSubOfficeId(e.target.value)}
-                                                    disabled={loadingSubOffices}
-                                                >
-                                                    <option value="">
-                                                        {loadingSubOffices ? 'Loading units...' : subOffices.length === 0 ? 'No sub-units (assign to main office)' : 'Select Unit...'}
-                                                    </option>
-                                                    {subOffices.map(s => (
-                                                        <option key={s.office_id} value={s.office_id}>
-                                                            {s.code} - {s.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><Icons.ChevronDown /></div>
+                                    {/* ========== SUB-OFFICE MULTI-SELECT (Staff Assignment) ========== */}
+                                    {formData.role === 'STAFF' && selectedOfficeId && (
+                                        <div className="animate-fade-in space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <label className="block text-xs font-bold text-slate-500 uppercase">
+                                                    Sub-Office Assignments
+                                                    <span className="font-normal text-slate-400 normal-case ml-1">(Click to select multiple)</span>
+                                                </label>
+                                                <span className="text-xs text-purple-600 font-semibold bg-purple-50 px-2 py-1 rounded-full">
+                                                    {selectedSubOfficeIds.length} selected
+                                                </span>
                                             </div>
+
+                                            {loadingSubOffices ? (
+                                                <div className="flex items-center gap-2 text-sm text-slate-400 italic py-3">
+                                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                    </svg>
+                                                    Loading sub-offices...
+                                                </div>
+                                            ) : subOffices.length === 0 ? (
+                                                <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
+                                                    <p className="text-sm text-slate-500">No sub-offices found under this office.</p>
+                                                    <p className="text-xs text-slate-400 mt-1">The staff will be assigned to the main office only.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                    {subOffices.map(subOffice => {
+                                                        const isSelected = selectedSubOfficeIds.includes(subOffice.office_id);
+                                                        return (
+                                                            <button
+                                                                key={subOffice.office_id}
+                                                                type="button"
+                                                                onClick={() => toggleSubOffice(subOffice)}
+                                                                className={`px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all duration-200 border-2 text-left flex items-center gap-2 group
+                                                                ${isSelected
+                                                                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-lg shadow-purple-500/25 scale-[1.02]'
+                                                                        : 'bg-white text-slate-600 border-slate-200 hover:border-purple-400 hover:bg-purple-50 hover:shadow-md'}`}
+                                                            >
+                                                                <span className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all
+                                                                    ${isSelected ? 'bg-white/20' : 'bg-slate-100 group-hover:bg-purple-100'}`}>
+                                                                    {isSelected ? (
+                                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                        </svg>
+                                                                    ) : (
+                                                                        <svg className="w-3 h-3 text-slate-400 group-hover:text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                                                        </svg>
+                                                                    )}
+                                                                </span>
+                                                                <span className="truncate">{subOffice.code || subOffice.name}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Selected Sub-Offices Summary */}
+                                            {selectedSubOfficeIds.length > 0 && (
+                                                <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                                                    <p className="text-xs text-purple-700 font-semibold mb-2">✓ Staff will have access to:</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {selectedSubOfficeIds.map(id => {
+                                                            const so = subOffices.find(s => s.office_id === id);
+                                                            return so ? (
+                                                                <span key={id} className="px-2 py-1 bg-white/80 text-purple-700 text-xs font-bold rounded-lg border border-purple-200">
+                                                                    {so.code || so.name}
+                                                                </span>
+                                                            ) : null;
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

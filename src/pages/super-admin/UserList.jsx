@@ -280,6 +280,15 @@ const UserList = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="text-sm font-medium text-slate-700">{u.office || 'Unassigned'}</p>
+                                            {u.sub_units && u.sub_units.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mb-1">
+                                                    {u.sub_units.map((unit, idx) => (
+                                                        <span key={idx} className="text-[10px] font-bold text-indigo-600 bg-indigo-50 inline-block px-1.5 py-0.5 rounded">
+                                                            {unit.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
                                             <p className="text-[11px] text-slate-400 font-medium">{u.region_name || 'No Region'}</p>
                                         </td>
                                         <td className="px-6 py-4">

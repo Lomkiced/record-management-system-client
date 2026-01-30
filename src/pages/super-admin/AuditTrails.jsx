@@ -158,16 +158,15 @@ const AuditTrails = () => {
                 <th className="px-6 py-4">Event</th>
                 <th className="px-6 py-4">Description</th>
                 <th className="px-6 py-4">Region</th>
-                <th className="px-6 py-4 text-right">IP</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse"><td colSpan="6" className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-full"></div></td></tr>
+                  <tr key={i} className="animate-pulse"><td colSpan="5" className="px-6 py-4"><div className="h-4 bg-slate-100 rounded w-full"></div></td></tr>
                 ))
               ) : logs.length === 0 ? (
-                <tr><td colSpan="6" className="p-20 text-center text-slate-400">No events found matching your filters.</td></tr>
+                <tr><td colSpan="5" className="p-20 text-center text-slate-400">No events found matching your filters.</td></tr>
               ) : (
                 logs.map((log) => (
                   <tr key={log.log_id} className="hover:bg-slate-50/50 transition-colors">
@@ -176,7 +175,6 @@ const AuditTrails = () => {
                     <td className="px-6 py-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase border ${getActionStyle(log.action)}`}>{log.action}</span></td>
                     <td className="px-6 py-4 text-slate-600 max-w-sm truncate" title={log.details}>{log.details}</td>
                     <td className="px-6 py-4">{log.region_name ? <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 font-bold uppercase">{log.region_name}</span> : '-'}</td>
-                    <td className="px-6 py-4 text-right font-mono text-xs text-slate-400">{log.ip_address}</td>
                   </tr>
                 ))
               )}
