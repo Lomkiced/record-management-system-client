@@ -40,13 +40,15 @@ const RecordTable = ({ records, onEdit, onArchive, onRestore, onDestroy, onView,
 
     let label;
     if (days < 30) {
-      label = `${days} Days`;
+      label = `${days} ${days === 1 ? 'Day' : 'Days'}`;
     } else if (days < 365) {
-      const weeks = (days / 7).toFixed(1);
-      // If close to whole number, show integer
-      label = weeks.endsWith('.0') ? `${parseInt(weeks)} Weeks` : `${weeks} Weeks`;
+      const weeksRaw = (days / 7).toFixed(1);
+      const weeks = weeksRaw.endsWith('.0') ? parseInt(weeksRaw) : weeksRaw;
+      label = `${weeks} ${weeks == 1 ? 'Week' : 'Weeks'}`;
     } else {
-      label = `${(days / 365).toFixed(1)} Years`;
+      const yearsRaw = (days / 365).toFixed(1);
+      const years = yearsRaw.endsWith('.0') ? parseInt(yearsRaw) : yearsRaw;
+      label = `${years} ${years == 1 ? 'Year' : 'Years'}`;
     }
 
     return <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">{label}</span>;

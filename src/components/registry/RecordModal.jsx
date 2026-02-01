@@ -200,7 +200,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                 const officeData = await getOfficesByRegion(regId);
                 setOffices(officeData);
                 if (officeData.length === 0) {
-                    toast.warning("No registered offices found in this province.");
+                    toast.info("No offices in this province. You can still upload records.");
                 }
             } catch (err) {
                 console.error(err);
@@ -264,11 +264,13 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
     };
 
     // 3. FETCH SHELVES DYNAMICALLY
+    // 3. FETCH SHELVES DYNAMICALLY
     useEffect(() => {
-        if (formData.region_id && formData.office_id && formData.category_name) {
+        // Now allows fetching if office_id is empty (for Province/Region level shelves)
+        if (formData.region_id && formData.category_name) {
             getShelves({
                 region_id: formData.region_id,
-                office_id: formData.office_id,
+                office_id: formData.office_id || '', // Send empty string if null
                 category: formData.category_name,
                 restricted_only: formData.is_restricted // Filter by Vault Status
             })
@@ -307,8 +309,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
         // 2. Location Check
         if (!formData.region_id) return toast.error("Please select a Province.");
 
-        // 3. Office/Unit Logic
-        if (!formData.office_id) return toast.error("Please select an Office.");
+        // 3. Office/Unit Logic (Office is OPTIONAL - allows upload when province has no offices)
         // If the selected parent has sub-offices, ensure one is selected
         if (selectedParentOffice && subOffices.length > 0 && !selectedSubOffice) {
             return toast.error("Please select a specific Unit/Section.");
@@ -463,11 +464,11 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="group">
-                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Office / Division</label>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Office / Division <span className="text-slate-300">(Optional)</span></label>
                                         <div className="relative">
-                                            <select required className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 appearance-none disabled:text-slate-400" value={selectedParentOffice} onChange={handleParentOfficeChange} disabled={!formData.region_id || (offices.length === 0 && !!formData.region_id)}>
+                                            <select className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 appearance-none disabled:text-slate-400" value={selectedParentOffice} onChange={handleParentOfficeChange} disabled={!formData.region_id || (offices.length === 0 && !!formData.region_id)}>
                                                 <option value="">
-                                                    {formData.region_id && offices.length === 0 ? 'No Offices Available' : 'Select Office...'}
+                                                    {formData.region_id && offices.length === 0 ? 'None (Province Only)' : 'Select Office...'}
                                                 </option>
                                                 {offices.map(o => <option key={o.office_id} value={o.office_id}>{o.code}</option>)}
                                             </select>

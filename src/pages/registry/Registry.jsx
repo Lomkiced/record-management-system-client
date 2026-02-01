@@ -285,14 +285,18 @@ const Registry = () => {
     // If a sub-office is active, use IT. Otherwise fallback to parent office.
     const targetOfficeId = activeSubOffice?.office_id || activeOffice?.office_id;
 
-    if (activeRegion && targetOfficeId && activeCategory) {
-      // console.log('[Frontend] Fetching shelves with restricted_only:', inRestrictedVault ? 'true' : 'false');
-      getShelves({
+    // Defensive check: Ensure we have the required IDs/Names before fetching
+    if (activeRegion?.id && activeCategory?.name) {
+      const params = {
         region_id: activeRegion.id,
-        office_id: targetOfficeId,
+        office_id: targetOfficeId || '', // Revert to empty string to match RecordModal
         category: activeCategory.name,
         restricted_only: inRestrictedVault ? 'true' : 'false'
-      }).then(data => {
+      };
+
+      console.log('[DEBUG] Fetching Shelves with params:', params);
+
+      getShelves(params).then(data => {
         // console.log("Shelves Loaded:", data);
         setShelves(data);
         if (inRestrictedVault) {
@@ -304,10 +308,14 @@ const Registry = () => {
           }
         }
       }).catch(err => {
-        console.error(err);
-        toast.error("Error loading shelves: " + err.message);
+        console.error("Shelf Load Error:", err);
+        // Extract specific error message from backend if available (e.g. "Missing filters: region_id")
+        const msg = err.response?.data?.message || err.message;
+        toast.error("Error loading shelves: " + msg);
       });
     } else {
+      // Debugging: Log why we are not fetching
+      // console.log("Skipping shelf fetch. missing:", !activeRegion?.id ? 'Region ID' : '', !activeCategory?.name ? 'Category Name' : '');
       setShelves([]);
     }
   }, [activeRegion, activeOffice, activeSubOffice, activeCategory, inRestrictedVault]);
@@ -428,7 +436,7 @@ const Registry = () => {
     // In Restricted Vault Mode, we allow "Recursive Viewing" from Parent Office, so we bypass this check.
     if (!inRestrictedVault && subOffices.length > 0 && !activeSubOffice) return;
 
-    if (subOffices.length === 0 && !activeOffice) return;
+    // if (subOffices.length === 0 && !activeOffice) return; // REMOVED: Allow Province-Level Navigation
 
     setActiveCategory(category);
     setActiveShelf(null);
