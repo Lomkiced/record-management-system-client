@@ -5,14 +5,13 @@ const ViewRecordModal = ({ isOpen, onClose, record }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        
+
         {/* Header */}
         <div className="px-8 py-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${
-                record.status === 'Active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-200'
-              }`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${record.status === 'Active' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                }`}>
                 {record.status}
               </span>
               <span className="text-xs font-mono text-gray-400">{record.id}</span>
@@ -26,7 +25,7 @@ const ViewRecordModal = ({ isOpen, onClose, record }) => {
 
         {/* Content Body */}
         <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
-          
+
           {/* 1. File Preview Stub */}
           <div className="bg-slate-900 rounded-xl p-6 text-center relative overflow-hidden group">
             <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
@@ -48,19 +47,19 @@ const ViewRecordModal = ({ isOpen, onClose, record }) => {
             </div>
             <div className="space-y-1">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Document Type</p>
-              <p className="text-sm font-medium text-gray-800">{record.type_name || 'N/A'}</p>
+              <p className="text-sm font-medium text-gray-800">{record.type_name || record.classification_rule || record.file_type || 'General Record'}</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Origin Region</p>
               <p className="text-sm font-medium text-gray-800 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                {record.region}
+                {record.region_name || record.region || 'Unknown Region'}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Lifecycle Status</p>
               <p className="text-sm font-medium text-indigo-600">
-                Retain until {record.disposal_date || 'N/A'}
+                {record.disposal_date ? `Retain until ${record.disposal_date}` : 'Permanent Retention'}
               </p>
             </div>
           </div>
@@ -83,7 +82,7 @@ const ViewRecordModal = ({ isOpen, onClose, record }) => {
           </div>
 
         </div>
-        
+
         {/* Footer */}
         <div className="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-end">
           <button onClick={onClose} className="px-6 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm">

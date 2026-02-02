@@ -190,7 +190,7 @@ const Archive = () => {
                                 <th className="px-6 py-4">File</th>
                                 <th className="px-6 py-4">Category</th>
                                 <th className="px-6 py-4">Region</th>
-                                <th className="px-6 py-4">Archived Date</th>
+                                <th className="px-6 py-4">Date Archived</th>
                                 <th className="px-6 py-4">Size</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -238,7 +238,7 @@ const Archive = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-500">
-                                            {formatDate(record.updated_at || record.created_at)}
+                                            {formatDate(record.archived_at || record.updated_at || record.uploaded_at || record.created_at)}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-slate-500 font-medium">
                                             {formatSize(record.file_size)}

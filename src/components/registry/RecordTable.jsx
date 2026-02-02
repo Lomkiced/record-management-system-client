@@ -84,7 +84,7 @@ const RecordTable = ({ records, onEdit, onArchive, onRestore, onDestroy, onView,
               <td className="px-6 py-4">
                 <div className="text-sm font-medium text-slate-700">{record.category}</div>
                 <div className="flex gap-2 mt-1">
-                  <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 uppercase">{record.type_name || record.classification_rule}</span>
+                  <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 uppercase">{record.type_name || record.classification_rule || record.file_type || 'Record'}</span>
                   {getRetentionBadge(record.disposal_date)}
                 </div>
               </td>
