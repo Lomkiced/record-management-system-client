@@ -342,6 +342,8 @@ const Registry = () => {
     }
     setActiveRegion(null);
     setActiveOffice(null);
+    setActiveSubOffice(null);
+    setSubOffices([]);
     setActiveCategory(null);
     setActiveShelf(null);
     setSearchTerm('');
@@ -359,6 +361,8 @@ const Registry = () => {
     const rId = Number(region.id);
     setActiveRegion(region);
     setActiveOffice(null);
+    setActiveSubOffice(null);
+    setSubOffices([]);
     setActiveCategory(null);
     setActiveShelf(null);
     setSearchTerm('');

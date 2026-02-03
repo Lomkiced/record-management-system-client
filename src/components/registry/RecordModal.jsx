@@ -447,9 +447,9 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                                 <div className="group">
                                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Province</label>
                                     <div className="relative">
-                                        <select required disabled={user.role !== 'SUPER_ADMIN'} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 disabled:text-slate-500 appearance-none" value={formData.region_id} onChange={handleRegionChange}>
-                                            {user.role !== 'SUPER_ADMIN' && <option value={user.region_id}>My Province</option>}
-                                            {user.role === 'SUPER_ADMIN' && (
+                                        <select required disabled={!['SUPER_ADMIN', 'ADMIN', 'REGIONAL_ADMIN'].includes(user.role)} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 disabled:text-slate-500 appearance-none" value={formData.region_id} onChange={handleRegionChange}>
+                                            {!['SUPER_ADMIN', 'ADMIN', 'REGIONAL_ADMIN'].includes(user.role) && <option value={user.region_id}>My Province</option>}
+                                            {['SUPER_ADMIN', 'ADMIN', 'REGIONAL_ADMIN'].includes(user.role) && (
                                                 <>
                                                     <option value="">Select Province...</option>
                                                     {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
