@@ -15,7 +15,9 @@ export const OfficeProvider = ({ children }) => {
 
     const getToken = () => localStorage.getItem('dost_token');
 
-    // Fetch offices by params (region_id, parent_office_id, toplevel)
+    // Fetch offices by params (region_id, parent_office_id, toplevel, page, limit)
+    const [pagination, setPagination] = useState({ total: 0, current: 1, pages: 1 });
+
     const fetchOffices = async (params = null) => {
         setLoading(true);
         try {
@@ -29,6 +31,9 @@ export const OfficeProvider = ({ children }) => {
                     if (params.region_id) searchParams.append('region_id', params.region_id);
                     if (params.parent_office_id) searchParams.append('parent_office_id', params.parent_office_id);
                     if (params.toplevel) searchParams.append('toplevel', params.toplevel);
+                    if (params.page) searchParams.append('page', params.page);
+                    if (params.limit) searchParams.append('limit', params.limit);
+                    if (params.search) searchParams.append('search', params.search);
                 } else {
                     // Backward compatibility: treat as regionId
                     searchParams.append('region_id', params);
@@ -44,16 +49,27 @@ export const OfficeProvider = ({ children }) => {
             });
 
             if (response.ok) {
-                const data = await response.json();
-                setOffices(data);
-                return data;
+                const result = await response.json();
+
+                // Handle both legacy array and new paginated object
+                if (Array.isArray(result)) {
+                    setOffices(result);
+                    setPagination({ total: result.length, current: 1, pages: 1 });
+                    return result;
+                } else {
+                    setOffices(result.data || []);
+                    setPagination(result.pagination || { total: 0, current: 1, pages: 1 });
+                    return result.data;
+                }
             } else {
                 setOffices([]);
+                setPagination({ total: 0, current: 1, pages: 1 });
                 return [];
             }
         } catch (error) {
             console.error('Fetch Offices Error:', error);
             setOffices([]);
+            setPagination({ total: 0, current: 1, pages: 1 });
             return [];
         } finally {
             setLoading(false);
@@ -158,6 +174,7 @@ export const OfficeProvider = ({ children }) => {
         <OfficeContext.Provider value={{
             offices,
             loading,
+            pagination,
             fetchOffices,
             getOfficesByRegion,
             getSubOffices,

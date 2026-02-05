@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import OfficeModal from '../../components/super-admin/OfficeModal';
 import { useConfirmation } from '../../context/ConfirmationContext';
 import { useOffices } from '../../context/OfficeContext';
 import { useRegions } from '../../context/RegionContext';
+import useDebounce from '../../hooks/useDebounce';
 
 // ... (Icons remain same)
 // --- PROFESSIONAL ICONS ---
@@ -21,79 +22,70 @@ const Icons = {
 };
 
 const OfficeManager = () => {
-    const { offices, fetchOffices, deleteOffice, loading } = useOffices();
+    const { offices, fetchOffices, deleteOffice, loading, pagination } = useOffices();
     const { regions } = useRegions();
     const { confirm } = useConfirmation();
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [search, setSearch] = useState('');
-    const [filterRegion, setFilterRegion] = useState('ALL');
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // UI State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [targetOffice, setTargetOffice] = useState(null);
     const [viewMode, setViewMode] = useState('list');
-
-    // Initial Filter from Navigation
-    useEffect(() => {
-        if (location.state?.regionId) {
-            setFilterRegion(location.state.regionId);
-        }
-    }, [location.state]);
-
-    const [parentOfficeId, setParentOfficeId] = useState(null);
     const [parentOfficeName, setParentOfficeName] = useState('');
 
-    // Initial Filter from Navigation
+    // Derived State from URL
+    const search = searchParams.get('search') || '';
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const filterRegion = searchParams.get('region') || 'ALL';
+    const parentOfficeId = searchParams.get('parent') || null;
+
+    // Debounce Search
+    const debouncedSearch = useDebounce(search, 500);
+
+    // Fetch Data on Params Change
     useEffect(() => {
-        if (location.state?.regionId) {
-            setFilterRegion(location.state.regionId);
-            setParentOfficeId(null); // Reset drilldown on region change
-        }
-    }, [location.state]);
-
-    // Load offices on mount and when filter changes
-    useEffect(() => {
-        const load = async () => {
-            // For filtering
-            const params = {};
-            if (filterRegion !== 'ALL') params.region_id = filterRegion;
-            if (parentOfficeId) params.parent_office_id = parentOfficeId;
-            else params.toplevel = 'true'; // If no parent specified, show only top level (unless fetching ALL regions? No, usually top level is safer default for mixed view)
-
-            // However, existing fetchOffices in context might expects a single arg or object. 
-            // Let's assume we need to update Context or pass object.
-            // Looking at previous context usage: fetchOffices(filterRegion).
-            // I should probably check the context file, but I can implement this assuming standard pattern or fix context after.
-            // Actually, to be safe, I'll use the context's fetchOffices if it supports it, OR I'll modify context. 
-            // Let's assume fetchOffices accepts an object or ID. The controller accepts query params.
-            // I'll update the component to pass the object if the context allows.
-            // Since I can't check context right this second easily without another tool call, I will update this locally to pass the params object and then fix context if it breaks (or strictly, check context first).
-            // Better: I'll assume I need to pass the params.
-
-            // BUT, the context `fetchOffices` likely currently takes just `region_id`.
-            // I will update the `OfficeContext` in the NEXT step.
+        const fetch = async () => {
+            const params = {
+                page,
+                limit,
+                search: debouncedSearch,
+                region_id: filterRegion !== 'ALL' ? filterRegion : null,
+                parent_office_id: parentOfficeId,
+                toplevel: !parentOfficeId ? 'true' : undefined
+            };
             await fetchOffices(params);
         };
-        load();
-    }, [filterRegion, parentOfficeId]);
+        fetch();
+    }, [debouncedSearch, page, limit, filterRegion, parentOfficeId]);
 
-    // Filter offices by search
-    const filteredOffices = offices.filter(o => {
-        const matchesSearch = (o.name || '').toLowerCase().includes(search.toLowerCase()) ||
-            (o.code || '').toLowerCase().includes(search.toLowerCase());
-        return matchesSearch;
-    });
+    // Helpers to update params
+    const updateParams = (newParams) => {
+        const next = new URLSearchParams(searchParams);
+        Object.entries(newParams).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === '') {
+                next.delete(key);
+            } else {
+                next.set(key, value);
+            }
+        });
+        setSearchParams(next);
+    };
+
+    // Derived Lists
+    // Since server filters, we just use 'offices' directly
+    const filteredOffices = offices;
 
     // Handlers
     const handleOpenModal = (office = null) => {
         if (office) {
-            // Editing existing office
             setTargetOffice(office);
         } else {
-            // Creating new office/sub-office
-            // Pass parent_id if in sub-office view, and always pass region_id
             setTargetOffice({
-                parent_id: parentOfficeId || null,
+                parent_id: parentOfficeId,
                 region_id: filterRegion !== 'ALL' ? filterRegion : null
             });
         }
@@ -124,20 +116,22 @@ const OfficeManager = () => {
 
     const handleSaveSuccess = () => {
         handleModalClose();
-        // Refresh offices
-        const params = {};
-        if (filterRegion !== 'ALL') params.region_id = filterRegion;
-        if (parentOfficeId) params.parent_office_id = parentOfficeId;
-        else params.toplevel = 'true';
+        // Refresh with current params
+        const params = {
+            page,
+            limit,
+            search: debouncedSearch,
+            region_id: filterRegion !== 'ALL' ? filterRegion : null,
+            parent_office_id: parentOfficeId,
+            toplevel: !parentOfficeId ? 'true' : undefined
+        };
         fetchOffices(params);
     };
 
     const handleOfficeClick = (office) => {
         // DYNAMIC: If we're at top level (no parent), try to drill down
-        // The office list will be empty if there are no sub-offices
         if (!parentOfficeId) {
-            // Drill down to show sub-offices (if any exist, they'll be fetched on next render)
-            setParentOfficeId(office.office_id);
+            updateParams({ parent: office.office_id, page: 1 });
             setParentOfficeName(office.name);
             return;
         }
@@ -147,7 +141,7 @@ const OfficeManager = () => {
     };
 
     const handleBack = () => {
-        setParentOfficeId(null);
+        updateParams({ parent: null, page: 1 });
         setParentOfficeName('');
     };
 
@@ -214,7 +208,7 @@ const OfficeManager = () => {
                     color="text-emerald-600"
                     bg="bg-emerald-50"
                 />
-                
+
             </div>
 
             {/* 3. COMMAND BAR (Toolbar) */}
@@ -230,7 +224,7 @@ const OfficeManager = () => {
                             placeholder="Search office name, code..."
                             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => updateParams({ search: e.target.value, page: 1 })}
                         />
                     </div>
 
@@ -241,7 +235,7 @@ const OfficeManager = () => {
                         <select
                             className="appearance-none pl-3 pr-8 py-2.5 bg-white border border-slate-200 hover:border-indigo-300 rounded-lg text-sm font-semibold text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer shadow-sm transition-all min-w-[160px]"
                             value={filterRegion}
-                            onChange={(e) => setFilterRegion(e.target.value)}
+                            onChange={(e) => updateParams({ region: e.target.value, page: 1, parent: null })}
                         >
                             <option value="ALL">All Regions</option>
                             {regions.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -253,10 +247,16 @@ const OfficeManager = () => {
 
                     <button
                         onClick={() => {
-                            const params = {};
-                            if (filterRegion !== 'ALL') params.region_id = filterRegion;
-                            if (parentOfficeId) params.parent_office_id = parentOfficeId;
-                            else params.toplevel = 'true';
+                            // Trigger re-fetch manually if needed, but params change triggers effect. 
+                            // To force refresh without params change, we might need a dummy state or just call fetchOffices directly.
+                            const params = {
+                                page,
+                                limit,
+                                search: debouncedSearch,
+                                region_id: filterRegion !== 'ALL' ? filterRegion : null,
+                                parent_office_id: parentOfficeId,
+                                toplevel: !parentOfficeId ? 'true' : undefined
+                            };
                             fetchOffices(params);
                         }}
                         className="p-2.5 bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 rounded-lg shadow-sm transition-colors"
@@ -406,7 +406,60 @@ const OfficeManager = () => {
                 )}
             </div>
 
-            {/* MODAL (Unchanged Logic) */}
+            {/* 5. PAGINATION CONTROLS */}
+            {!loading && offices.length > 0 && (
+                <div className="flex-none px-8 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
+                        <span>Rows per page:</span>
+                        <select
+                            value={limit}
+                            onChange={(e) => updateParams({ limit: Number(e.target.value), page: 1 })}
+                            className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-slate-700 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                        </select>
+                        <span className="ml-4">
+                            Showing {((pagination.current - 1) * limit) + 1} - {Math.min(pagination.current * limit, pagination.total)} of {pagination.total}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => updateParams({ page: Math.max(1, page - 1) })}
+                            disabled={pagination.current === 1}
+                            className={`p-2 rounded-lg border flex items-center gap-1 text-sm font-bold transition-colors
+                                ${pagination.current === 1
+                                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                                    : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                        >
+                            <Icons.ArrowLeft /> Prev
+                        </button>
+
+                        <div className="flex items-center gap-1 px-2">
+                            {/* Simplified pagination for now */}
+                            <span className="text-sm font-bold text-slate-600">
+                                Page {pagination.current} of {pagination.pages}
+                            </span>
+                        </div>
+
+                        <button
+                            onClick={() => updateParams({ page: Math.min(pagination.pages, page + 1) })}
+                            disabled={pagination.current === pagination.pages}
+                            className={`p-2 rounded-lg border flex items-center gap-1 text-sm font-bold transition-colors
+                                ${pagination.current === pagination.pages
+                                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                                    : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                        >
+                            Next <span className="rotate-180"><Icons.ArrowLeft /></span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL */}
             <OfficeModal
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
