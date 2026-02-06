@@ -640,10 +640,15 @@ const Registry = () => {
       return 'provinces';
     }
 
-    // Restricted Vault Mode (unchanged for now)
+    // Restricted Vault Mode - Now with full sub-office support
     if (activeShelf) return 'vault_records';
     if (activeCategory) return 'vault_shelves';
-    if (activeOffice) return 'vault_categories';
+
+    // DYNAMIC: Show sub-office level if office has sub-offices (mirrors Normal Mode logic)
+    if (activeSubOffice) return 'vault_categories';
+    if (activeOffice && subOffices.length > 0) return 'vault_suboffices';
+    if (activeOffice && subOffices.length === 0) return 'vault_categories';
+
     if (activeRegion) return 'vault_offices';
     return 'vault_provinces';
   };
@@ -896,8 +901,8 @@ const Registry = () => {
             </>
           )}
 
-          {/* LEVEL 2.5: SUB-OFFICES (Dynamic) */}
-          {getCurrentLevel() === 'suboffices' && !searchTerm && (
+          {/* LEVEL 2.5: SUB-OFFICES (Dynamic - Works in both Normal and Vault Mode) */}
+          {(getCurrentLevel() === 'suboffices' || getCurrentLevel() === 'vault_suboffices') && !searchTerm && (
             <>
               <SectionHeader title={`Sub-Units under ${activeOffice?.code}`} subtitle="Select a specific operational unit or center." isDark={inRestrictedVault} />
               {loading ? <GridSkeleton /> : (
@@ -1057,6 +1062,7 @@ const Registry = () => {
         currentOffice={activeOffice}
         currentSubOffice={activeSubOffice}
         currentCategory={activeCategory}
+        isVaultMode={inRestrictedVault}
       />
       <FilePasswordModal isOpen={passwordModalOpen} onClose={() => setPasswordModalOpen(false)} onSuccess={handleUnlockSuccess} record={selectedRestrictedRecord} />
       <DocumentViewerModal isOpen={viewerOpen} onClose={() => setViewerOpen(false)} fileUrl={viewerUrl} record={viewerFile} />

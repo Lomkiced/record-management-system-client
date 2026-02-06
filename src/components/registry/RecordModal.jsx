@@ -15,7 +15,7 @@ const formatBytes = (bytes, decimals = 2) => {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, currentOffice, currentSubOffice, currentCategory }) => {
+const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, currentOffice, currentSubOffice, currentCategory, isVaultMode = false }) => {
     // ... (existing hooks) ...
 
     // HELPER: Fix Grammar (1 Year vs 2 Years) - REMOVED (Using Utility)
@@ -148,7 +148,7 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                             shelf: '',
                             retention_period: '',
                             file: null,
-                            is_restricted: false,
+                            is_restricted: isVaultMode, // Auto-enable when opened from Vault Mode
                             period_covered: '',
                             volume: '',
                             duplication: '',
@@ -422,10 +422,17 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl flex flex-col max-h-[85vh] animate-zoom-in border border-white/20">
 
                 {/* HEADER */}
-                <div className="flex-none px-8 py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center">
+                <div className={`flex-none px-8 py-6 border-b flex justify-between items-center ${isVaultMode ? 'bg-gradient-to-r from-red-50 to-red-100/50 border-red-100' : 'bg-gradient-to-r from-slate-50 to-white border-slate-100'}`}>
                     <div>
-                        <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">{isEditMode ? 'Edit Metadata' : 'Add Document'}</h2>
-                        <p className="text-xs font-medium text-slate-500 mt-1 uppercase tracking-wider">{isEditMode ? 'Update record details' : 'Secure PDF Repository'}</p>
+                        <h2 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${isVaultMode ? 'text-red-800' : 'text-slate-800'}`}>
+                            {isVaultMode && (
+                                <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" /></svg>
+                            )}
+                            {isEditMode ? 'Edit Metadata' : (isVaultMode ? 'Vault Upload' : 'Add Document')}
+                        </h2>
+                        <p className={`text-xs font-medium mt-1 uppercase tracking-wider ${isVaultMode ? 'text-red-600' : 'text-slate-500'}`}>
+                            {isEditMode ? 'Update record details' : (isVaultMode ? 'Restricted Access • Encrypted Storage' : 'Secure PDF Repository')}
+                        </p>
                     </div>
                 </div>
 
@@ -690,8 +697,8 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                                             </div>
                                         </div>
 
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" checked={formData.is_restricted} onChange={(e) => setFormData({ ...formData, is_restricted: e.target.checked })} />
+                                        <label className={`relative inline-flex items-center ${isVaultMode ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`} title={isVaultMode ? 'Always restricted when uploading from Vault Mode' : 'Toggle restricted access'}>
+                                            <input type="checkbox" className="sr-only peer" checked={formData.is_restricted} onChange={(e) => !isVaultMode && setFormData({ ...formData, is_restricted: e.target.checked })} disabled={isVaultMode} />
                                             <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                                         </label>
                                     </div>
