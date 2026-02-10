@@ -31,17 +31,19 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [chartMode, setChartMode] = useState('trends'); // 'trends' or 'office'
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('dost_token');
+      const res = await fetch('/api/dashboard/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem('dost_token');
-        const res = await fetch('/api/dashboard/stats', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data);
-        }
-      } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
     fetchData();
   }, []);
 
@@ -69,8 +71,8 @@ const AdminDashboard = () => {
         </div>
         <div className="flex gap-2">
 
-          <button onClick={() => window.location.reload()} className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          <button onClick={fetchData} className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 transition-colors" title="Refresh Data">
+            <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
         </div>
       </div>
