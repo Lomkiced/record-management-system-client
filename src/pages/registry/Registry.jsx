@@ -28,10 +28,22 @@ const Icons = {
   FAS: () => <svg className="w-12 h-12 text-emerald-600 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
   FOS: () => <svg className="w-12 h-12 text-amber-500 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>,
   TOS: () => <svg className="w-12 h-12 text-violet-500 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" /></svg>,
-  Codex: () => <svg className="w-10 h-10 text-amber-400 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
+  Codex: ({ className = "text-amber-400" }) => <svg className={`w-10 h-10 drop-shadow-sm ${className}`} fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
   Lock: () => <svg className="w-12 h-12 text-red-500 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" /></svg>,
   Shelf: () => <svg className="w-10 h-10 text-slate-500 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M3.75 3A2.25 2.25 0 0 0 1.5 5.25v2.25c0 .32.07.625.2.906a2.25 2.25 0 0 0-.2.907v2.25a2.25 2.25 0 0 0 .2.906 2.25 2.25 0 0 0-.2.907v2.25c0 1.243 1.008 2.25 2.25 2.25h16.5A2.25 2.25 0 0 0 22.5 19.5v-2.25a2.25 2.25 0 0 0-.2-.907 2.25 2.25 0 0 0 .2-.906v-2.25a2.25 2.25 0 0 0-.2-.907 2.25 2.25 0 0 0 .2-.906V5.25A2.25 2.25 0 0 0 20.25 3H3.75ZM3 17.25v-2.25c.334 0 .647-.09.912-.248a3 3 0 0 0 2.208.248c.552.12 1.133.12 1.685-.015a3 3 0 0 0 2.247.015c.574.12 1.176.12 1.75 0a3 3 0 0 0 2.248-.015c.563.123 1.155.123 1.718 0a3 3 0 0 0 2.248.015c.552.135 1.134.135 1.685 0 .736.158 1.41.076 1.999-.248v2.25H3Z" /></svg>,
-  Trash: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+  Trash: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+  Maintenance: () => <svg className="w-12 h-12 text-slate-400 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.033a.75.75 0 011.08 0l4.25 4.25a.75.75 0 010 1.08l-3.033 2.496M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437l1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008z" /></svg>
+};
+
+const FolderColors = {
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: 'text-amber-400', hover: 'group-hover:text-amber-700', grad: 'to-amber-500/5', ring: 'focus:ring-amber-500/20', inputBorder: 'focus:border-amber-500', indicator: 'bg-amber-400' },
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', icon: 'text-blue-400', hover: 'group-hover:text-blue-700', grad: 'to-blue-500/5', ring: 'focus:ring-blue-500/20', inputBorder: 'focus:border-blue-500', indicator: 'bg-blue-400' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', icon: 'text-emerald-400', hover: 'group-hover:text-emerald-700', grad: 'to-emerald-500/5', ring: 'focus:ring-emerald-500/20', inputBorder: 'focus:border-emerald-500', indicator: 'bg-emerald-400' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200', icon: 'text-rose-400', hover: 'group-hover:text-rose-700', grad: 'to-rose-500/5', ring: 'focus:ring-rose-500/20', inputBorder: 'focus:border-rose-500', indicator: 'bg-rose-400' },
+  purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', icon: 'text-purple-400', hover: 'group-hover:text-purple-700', grad: 'to-purple-500/5', ring: 'focus:ring-purple-500/20', inputBorder: 'focus:border-purple-500', indicator: 'bg-purple-400' },
+  slate: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', icon: 'text-slate-400', hover: 'group-hover:text-slate-700', grad: 'to-slate-500/5', ring: 'focus:ring-slate-500/20', inputBorder: 'focus:border-slate-500', indicator: 'bg-slate-400' },
+  cyan: { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-200', icon: 'text-cyan-400', hover: 'group-hover:text-cyan-700', grad: 'to-cyan-500/5', ring: 'focus:ring-cyan-500/20', inputBorder: 'focus:border-cyan-500', indicator: 'bg-cyan-400' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', icon: 'text-indigo-400', hover: 'group-hover:text-indigo-700', grad: 'to-indigo-500/5', ring: 'focus:ring-indigo-500/20', inputBorder: 'focus:border-indigo-500', indicator: 'bg-indigo-400' },
 };
 
 // --- SKELETONS ---
@@ -214,6 +226,16 @@ const Registry = () => {
         if (subs.length === 1) {
           setActiveSubOffice(subs[0]);
         }
+      } else {
+        // Province has NO offices configured - create virtual office for province-level access
+        // This allows staff to access classification folders directly at the province level
+        setActiveOffice({
+          office_id: null,
+          code: 'PROVINCE',
+          name: `${staffRegion.name} Provincial Office`
+        });
+        setSubOffices([]);
+        toast.info(`No offices configured in ${staffRegion.name}. Accessing province-level records.`);
       }
 
       setStaffAutoNavDone(true);
@@ -358,6 +380,16 @@ const Registry = () => {
       toast.error('You can only access your assigned office records');
       return;
     }
+
+    // BLOCK OFFLINE REGIONS
+    if (region.status === 'Inactive') {
+      toast.error('System Under Maintenance: Access to this region is temporarily disabled.', {
+        description: 'Please try again later or contact the administrator.',
+        icon: <Icons.Maintenance className="w-5 h-5 text-red-500" />
+      });
+      return;
+    }
+
     const rId = Number(region.id);
     setActiveRegion(region);
     setActiveOffice(null);
@@ -376,9 +408,18 @@ const Registry = () => {
       if (regionOffices.length > 0) {
         // Auto-select the first office to skip the level
         setActiveOffice(regionOffices[0]);
+        // CRITICAL FIX: Also fetch sub-offices for the auto-selected office
+        try {
+          const subs = await getSubOffices(regionOffices[0].office_id);
+          setSubOffices(subs || []);
+        } catch (err) {
+          console.error('[Registry] Failed to fetch sub-offices for auto-selected office:', err);
+          setSubOffices([]);
+        }
       } else {
         // If no offices, create a virtual placeholder to allow category selection
         setActiveOffice({ office_id: null, code: 'DEFAULT', name: 'Main Office' });
+        setSubOffices([]);
       }
     }
     // Other regions proceed normally to show offices first
@@ -454,12 +495,58 @@ const Registry = () => {
     setSearchTerm('');
   };
 
-  const goToRegion = () => {
+  const goToRegion = async () => {
     if (isStaffLocked) {
       toast.error('You can only access your assigned office records');
       return;
     }
-    setActiveOffice(null); setActiveSubOffice(null); setSubOffices([]); setActiveCategory(null); setActiveShelf(null); setSearchTerm('');
+
+    // For regions that auto-skip office level (La Union=3, Ilocos Norte=1), check if they have real offices
+    const rId = Number(activeRegion?.id);
+    if ([1, 3].includes(rId)) {
+      // Fetch offices to determine behavior
+      const regionOffices = await getOfficesByRegion(activeRegion.id);
+      setOffices(regionOffices);
+
+      if (regionOffices.length > 0) {
+        // Has real offices - stay in region and auto-select first office
+        setActiveOffice(regionOffices[0]);
+        setActiveSubOffice(null);
+        // CRITICAL FIX: Fetch sub-offices for the auto-selected office
+        try {
+          const subs = await getSubOffices(regionOffices[0].office_id);
+          setSubOffices(subs || []);
+        } catch (err) {
+          console.error('[Registry] Failed to fetch sub-offices:', err);
+          setSubOffices([]);
+        }
+        setActiveCategory(null);
+        setActiveShelf(null);
+        setSearchTerm('');
+      } else {
+        // No real offices (was using virtual DEFAULT) - redirect back to provinces
+        setActiveRegion(null);
+        setActiveOffice(null);
+        setActiveSubOffice(null);
+        setSubOffices([]);
+        setActiveCategory(null);
+        setActiveShelf(null);
+        setSearchTerm('');
+        setInRestrictedVault(false);
+        setVaultUnlocked(false);
+        setShelves([]);
+        toast.info(`${activeRegion?.name} has no offices configured. Returning to provinces.`);
+      }
+      return;
+    }
+
+    // Default behavior for other regions - just clear navigation below region level
+    setActiveOffice(null);
+    setActiveSubOffice(null);
+    setSubOffices([]);
+    setActiveCategory(null);
+    setActiveShelf(null);
+    setSearchTerm('');
   };
   const goToOffice = () => {
     if (isStaffLocked && activeSubOffice) {
@@ -470,6 +557,17 @@ const Registry = () => {
   };
   const goToSubOffice = () => { setActiveCategory(null); setActiveShelf(null); setSearchTerm(''); };
   const goToCategory = () => { setActiveShelf(null); setSearchTerm(''); };
+
+  const goToVaultRoot = () => {
+    setActiveRegion(null);
+    setActiveOffice(null);
+    setActiveSubOffice(null);
+    setSubOffices([]);
+    setActiveCategory(null);
+    setActiveShelf(null);
+    setSearchTerm('');
+    setShelves([]);
+  };
 
   const enterRestrictedVault = () => {
     setVaultPasswordModal(true);
@@ -564,24 +662,28 @@ const Registry = () => {
 
   const handleEdit = (rec) => { setRecordToEdit(rec); setIsModalOpen(true); };
 
-  const handleOperationSuccess = () => {
+  const handleOperationSuccess = async () => {
     setIsModalOpen(false);
     setRecordToEdit(null);
 
     // FIX: Ensure we fetch using the CURRENTLY ACTIVE sub-office if present
-    const targetOfficeId = activeSubOffice?.office_id || activeOffice?.office_id;
+    const targetOfficeId = activeSubOffice?.office_id || activeOffice?.office_id || '';
+    const targetRegionId = activeRegion?.id || '';
+    const targetCategory = activeCategory?.name || 'All';
 
-    fetchRecords({
-      region: activeRegion?.id,
+    console.log('[Registry] Refreshing records with:', { targetRegionId, targetOfficeId, targetCategory });
+
+    await fetchRecords({
+      region: targetRegionId,
       office_id: targetOfficeId,
-      category: activeCategory?.name,
+      category: targetCategory,
       page: 1,
       status: viewMode,
       search: searchTerm,
-      shelf: activeShelf
+      shelf: activeShelf || ''
     });
 
-    // Also refresh shelves if we are in a category view, as a new shelf might have been created
+    // Also refresh shelves explicitly
     refreshCurrentShelves();
   };
 
@@ -720,7 +822,7 @@ const Registry = () => {
               {inRestrictedVault && (
                 <>
                   <Icons.ChevronRight />
-                  <button onClick={() => { setActiveRegion(null); setActiveOffice(null); }} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-red-400 hover:text-red-300 hover:bg-red-500/10`}>
+                  <button onClick={goToVaultRoot} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-red-400 hover:text-red-300 hover:bg-red-500/10`}>
                     Vault Entrance
                   </button>
                 </>
@@ -850,9 +952,9 @@ const Registry = () => {
                     <Card
                       key={region.id}
                       label={region.name}
-                      subLabel={inRestrictedVault ? 'Encrypted' : 'Provincial Office'}
-                      icon={inRestrictedVault ? <Icons.Lock /> : <Icons.Folder />}
-                      variant={inRestrictedVault ? 'danger' : 'blue'}
+                      subLabel={inRestrictedVault ? 'Encrypted' : (region.status === 'Inactive' ? 'Under Maintenance' : 'Provincial Office')}
+                      icon={inRestrictedVault ? <Icons.Lock /> : (region.status === 'Inactive' ? <Icons.Maintenance /> : <Icons.Folder />)}
+                      variant={inRestrictedVault ? 'danger' : (region.status === 'Inactive' ? 'maintenance' : 'blue')}
                       onClick={() => enterRegion(region)}
                       isDark={inRestrictedVault}
                     />
@@ -953,8 +1055,8 @@ const Registry = () => {
                       key={cat.category_id}
                       label={cat.name}
                       subLabel="Classification Series"
-                      icon={inRestrictedVault ? <Icons.Lock /> : <Icons.Codex />}
-                      variant={inRestrictedVault ? 'danger' : 'amber'}
+                      icon={inRestrictedVault ? <Icons.Lock /> : <Icons.Codex className={!inRestrictedVault && FolderColors[cat.color] ? FolderColors[cat.color].icon : "text-amber-400"} />}
+                      variant={inRestrictedVault ? 'danger' : (cat.color || 'amber')}
                       onClick={() => enterCategory(cat)}
                       isDark={inRestrictedVault}
                     />
@@ -1101,11 +1203,21 @@ const Card = ({ label, subLabel, icon, variant = 'default', onClick, isDark, act
     amber: isDark ? 'hover:bg-red-900/20' : 'hover:bg-amber-50 border-amber-100',
     slate: 'hover:bg-slate-100 border-slate-200',
     danger: 'hover:bg-red-900/20 border-red-900/10 hover:border-red-800/50',
-    'danger-dashed': 'border-dashed border-red-200 hover:bg-red-50 hover:border-red-300'
+    'danger-dashed': 'border-dashed border-red-200 hover:bg-red-50 hover:border-red-300',
+    maintenance: 'bg-slate-50 border-slate-200 opacity-80 cursor-not-allowed hover:bg-slate-100'
   };
 
   const bgClass = isDark ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border text-slate-700';
-  const hoverClass = variants[variant] || variants.default;
+
+  // Custom Color Handling for Folders
+  let hoverClass = variants[variant] || variants.default;
+  let customColor = null;
+
+  if (!isDark && FolderColors[variant]) {
+    const c = FolderColors[variant];
+    hoverClass = `${c.border} ${c.hover.replace('text', 'border')}`;
+    customColor = c;
+  }
 
   return (
     <div onClick={onClick} className={`group relative p-8 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-300 shadow-sm hover:shadow-2xl hover:-translate-y-1 overflow-hidden ${bgClass} ${hoverClass}`}>
@@ -1113,14 +1225,14 @@ const Card = ({ label, subLabel, icon, variant = 'default', onClick, isDark, act
 
       {/* Glow Effect */}
       <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-br from-transparent 
-         ${isDark ? 'to-red-900/20' : variant === 'blue' ? 'to-blue-500/5' : variant === 'purple' ? 'to-purple-500/5' : 'to-slate-500/5'}`}></div>
+         ${isDark ? 'to-red-900/20' : customColor ? customColor.grad : variant === 'blue' ? 'to-blue-500/5' : variant === 'purple' ? 'to-purple-500/5' : 'to-slate-500/5'}`}></div>
 
       <div className="relative z-10 flex flex-col items-center text-center gap-4">
         <div className="transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
           {icon}
         </div>
         <div>
-          <h3 className={`font-bold text-lg leading-tight group-hover:scale-105 transition-transform ${isDark ? 'group-hover:text-red-400' : 'group-hover:text-black'}`}>{label}</h3>
+          <h3 className={`font-bold text-lg leading-tight group-hover:scale-105 transition-transform ${isDark ? 'group-hover:text-red-400' : customColor ? customColor.hover : 'group-hover:text-black'}`}>{label}</h3>
           <p className={`text-xs font-medium mt-1 uppercase tracking-wide opacity-60 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subLabel}</p>
         </div>
       </div>

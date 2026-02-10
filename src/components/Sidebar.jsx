@@ -59,7 +59,7 @@ const Sidebar = () => {
     // Define Menu Structure
     const ADMIN_MENU = [
       { category: "Overview", items: [{ path: "/admin", label: "Dashboard", icon: Icons.Dashboard }] },
-      { category: "Governance", items: [{ path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
+      { category: "Governance", items: [{ path: "/offices", label: "Offices", icon: Icons.Building }, { path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
       { category: "Security", items: [{ path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
     ];
 
@@ -70,9 +70,13 @@ const Sidebar = () => {
         { category: 'Security', items: [{ path: '/audit', label: 'Audit Logs', icon: Icons.Shield }, { path: '/branding', label: 'System Branding', icon: Icons.Palette }] }
       ],
       'ADMIN': ADMIN_MENU,
-      'REGIONAL_ADMIN': ADMIN_MENU,
+      'REGIONAL_ADMIN': [
+        { category: "Overview", items: [{ path: "/admin", label: "Dashboard", icon: Icons.Dashboard }] },
+        { category: "Governance", items: [{ path: "/offices", label: "Offices", icon: Icons.Building }, { path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
+        { category: "Security", items: [{ path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
+      ],
       'STAFF': [
-        { category: 'Workspace', items: [{ path: '/staff', label: 'My Dashboard', icon: Icons.Home }, { path: '/registry', label: 'Records', icon: Icons.Search }, { path: '/codex', label: 'Classifications', icon: Icons.Book }] }
+        { category: 'Workspace', items: [{ path: '/staff', label: 'My Dashboard', icon: Icons.Home }, { path: '/registry', label: 'Records', icon: Icons.Search }, { path: '/codex', label: 'Classifications', icon: Icons.Book }, { path: '/archive', label: 'Archive', icon: Icons.Archive }] }
       ]
     };
 

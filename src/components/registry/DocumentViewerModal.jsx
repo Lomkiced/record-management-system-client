@@ -2,7 +2,7 @@
 const DocumentViewerModal = ({ isOpen, onClose, fileUrl, record }) => {
     if (!isOpen || !record) return null;
 
-    const { is_restricted, title, file_path, file_size, file_type, uploaded_at, region_name, office_name, category, shelf, uploader_name, retention_period, disposal_date, period_covered, volume, duplication, time_value, utility_value } = record;
+    const { is_restricted, title, file_path, file_size, file_type, uploaded_at, region_name, office_name, category, shelf, uploader_name, retention_period, disposal_date, period_covered, volume, duplication, time_value, utility_value, media_text, restriction_text, frequency_text, provision_text } = record;
 
     const formatBytes = (bytes, decimals = 2) => {
         if (!+bytes) return '0 Bytes';
@@ -124,14 +124,24 @@ const DocumentViewerModal = ({ isOpen, onClose, fileUrl, record }) => {
                                         </div>
 
                                         {[
+                                            { label: 'Medium', value: media_text },
+                                            { label: 'Restrictions', value: restriction_text, isBadge: true },
+                                            { label: 'Frequency', value: frequency_text },
+                                            { label: 'Provision', value: provision_text },
                                             { label: 'Volume', value: volume },
                                             { label: 'Duplication', value: duplication },
                                             { label: 'Time Value', value: timeValueMap[time_value] || time_value },
                                             { label: 'Utility Value', value: utilityValueMap[utility_value] || utility_value }
                                         ].map((item, idx) => (
-                                            <div key={idx} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                            <div key={idx} className={`p-3 bg-white border border-slate-100 rounded-xl shadow-sm ${item.isBadge ? 'col-span-2' : ''}`}>
                                                 <p className="text-[10px] text-slate-400 uppercase font-semibold mb-1">{item.label}</p>
-                                                <p className="text-xs font-bold text-slate-700 truncate">{item.value || '-'}</p>
+                                                {item.isBadge && item.value ? (
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${item.value.toLowerCase().includes('restricted') || item.value.toLowerCase().includes('confidential') ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                                                        {item.value}
+                                                    </span>
+                                                ) : (
+                                                    <p className="text-xs font-bold text-slate-700 truncate">{item.value || '-'}</p>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

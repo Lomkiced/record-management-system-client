@@ -54,14 +54,112 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
         volume: '',
         duplication: '',
         time_value: 'P',
-        utility_value: 'Adm'
+        utility_value: 'Adm',
+        media_text: '',
+        restriction_text: '',
+        frequency_text: '',
+        provision_text: ''
     });
 
     // Separated state for dropdowns
     const [selectedParentOffice, setSelectedParentOffice] = useState('');
     const [selectedSubOffice, setSelectedSubOffice] = useState('');
 
+    // STAFF OFFICE LOCK STATE
+    const isStaffUser = user?.role === 'STAFF';
+    const [staffAssignments, setStaffAssignments] = useState({
+        parentOfficeId: null,
+        parentOfficeName: '',
+        assignedUnitIds: [],
+        isLoading: true
+    });
+
     const isEditMode = !!recordToEdit;
+
+    // STAFF ASSIGNMENT RESOLUTION EFFECT
+    useEffect(() => {
+        if (!isOpen || !isStaffUser || !user?.assigned_office_ids?.length) {
+            setStaffAssignments({ parentOfficeId: null, parentOfficeName: '', assignedUnitIds: [], isLoading: false });
+            return;
+        }
+
+        const resolveStaffAssignments = async () => {
+            const token = localStorage.getItem('dost_token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            let parentId = null;
+            let parentName = '';
+            const unitIds = [];
+
+            for (const officeId of user.assigned_office_ids) {
+                try {
+                    const res = await fetch(`/api/offices/${officeId}`, { headers });
+                    if (res.ok) {
+                        const office = await res.json();
+                        if (office.parent_id) {
+                            // It's a sub-unit
+                            parentId = office.parent_id;
+                            parentName = office.parent_office_name || '';
+                            unitIds.push(office.office_id);
+                        } else {
+                            // It's a parent office
+                            parentId = office.office_id;
+                            parentName = office.name || office.code || '';
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error fetching office:', err);
+                }
+            }
+
+            setStaffAssignments({ parentOfficeId: parentId, parentOfficeName: parentName, assignedUnitIds: unitIds, isLoading: false });
+        };
+
+        resolveStaffAssignments();
+    }, [isOpen, isStaffUser, user?.assigned_office_ids]);
+
+    // AUTO-SET STAFF PARENT OFFICE & FILTER SUB-OFFICES
+    useEffect(() => {
+        if (staffAssignments.isLoading || !staffAssignments.parentOfficeId || !isStaffUser || !isOpen) return;
+
+        setSelectedParentOffice(staffAssignments.parentOfficeId);
+
+        // Load and filter sub-offices for staff's parent
+        getSubOffices(staffAssignments.parentOfficeId).then(subs => {
+            let filteredSubs = subs;
+            if (staffAssignments.assignedUnitIds.length > 0) {
+                filteredSubs = subs.filter(s => staffAssignments.assignedUnitIds.includes(s.office_id));
+            }
+            setSubOffices(filteredSubs);
+
+            // FIX: INTELLIGENT SELECTION LOGIC
+            // If the current context (currentSubOffice) is valid, use it.
+            // If only one sub-office is available, auto-select it.
+            // Otherwise, keep Parent Office as default (or whatever was initialized)
+
+            // Check if we are opening in a sub-office context that is valid for this staff
+            const contextSubOfficeId = currentSubOffice?.office_id;
+            const contextIsValid = contextSubOfficeId && filteredSubs.some(s => s.office_id === contextSubOfficeId);
+
+            if (contextIsValid) {
+                // Keep the context sub-office (don't overwrite)
+                setSelectedSubOffice(contextSubOfficeId);
+                setFormData(p => ({ ...p, office_id: contextSubOfficeId }));
+            } else if (filteredSubs.length === 1) {
+                // Auto-select the single available unit
+                const singleUnit = filteredSubs[0];
+                setSelectedSubOffice(singleUnit.office_id);
+                setFormData(p => ({ ...p, office_id: singleUnit.office_id }));
+            } else {
+                // Fallback to Parent Office if no specific sub-office context & multiple choices
+                // BUT: If user manually selected a sub-office in Form (e.g. Edit Mode), respect that too?
+                // For now, default to Parent is safer than random sub-office.
+                if (!formData.office_id) {
+                    setFormData(p => ({ ...p, office_id: staffAssignments.parentOfficeId }));
+                }
+            }
+        });
+    }, [staffAssignments, isStaffUser, isOpen, getSubOffices, currentSubOffice]);
 
     // 1. INITIALIZE DATA & FORM
     useEffect(() => {
@@ -84,6 +182,9 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                     if (cat.ok) setCodexCategories(categoriesData);
                     if (typ.ok) setCodexTypes(typesData);
 
+                    // Set New Attributes
+
+
                     // --- B. EDIT MODE ---
                     if (recordToEdit) {
                         setFormData({
@@ -100,7 +201,11 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                             volume: recordToEdit.volume || '',
                             duplication: recordToEdit.duplication || '',
                             time_value: recordToEdit.time_value || 'P',
-                            utility_value: recordToEdit.utility_value || 'Adm'
+                            utility_value: recordToEdit.utility_value || 'Adm',
+                            media_text: recordToEdit.media_text || '',
+                            restriction_text: recordToEdit.restriction_text || '',
+                            frequency_text: recordToEdit.frequency_text || '',
+                            provision_text: recordToEdit.provision_text || ''
                         });
 
                         // Populate Offices
@@ -153,7 +258,11 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                             volume: '',
                             duplication: '',
                             time_value: '',
-                            utility_value: ''
+                            utility_value: '',
+                            media_text: '',
+                            restriction_text: '',
+                            frequency_text: '',
+                            provision_text: ''
                         });
                         setUploadProgress(0);
                         setSelectedParentOffice(initParent);
@@ -361,12 +470,22 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                         volume: formData.volume,
                         duplication: formData.duplication,
                         time_value: formData.time_value,
-                        utility_value: formData.utility_value
+                        utility_value: formData.utility_value,
+                        media_text: formData.media_text,
+                        restriction_text: formData.restriction_text,
+                        frequency_text: formData.frequency_text,
+                        provision_text: formData.provision_text
                     })
                 });
             } else {
                 const data = new FormData();
-                Object.keys(formData).forEach(key => data.append(key, formData[key]));
+                // Append all fields EXCEPT file first
+                Object.keys(formData).forEach(key => {
+                    if (key !== 'file') data.append(key, formData[key]);
+                });
+                // Append file LAST (Critical for Multer/Busboy parsing)
+                if (formData.file) data.append('file', formData.file);
+
                 res = await fetch('/api/records', {
                     method: 'POST',
                     headers: headers,
@@ -378,16 +497,18 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
             setUploadProgress(100);
 
             if (res.ok) {
+                // Optimize: Immediate feedback
+                setUploadProgress(100);
                 setTimeout(() => {
-                    onSuccess();
+                    onSuccess(); // Triggers refresh
                     onClose();
-                    // Professional Feedack: Explain visibility
+
                     if (formData.is_restricted) {
-                        toast.success("Secure Upload Complete", { description: "File saved to Restricted Vault. Switch to Vault View to access." });
+                        toast.success("Secure Upload Complete", { description: "File saved to Restricted Vault." });
                     } else {
-                        toast.success(isEditMode ? 'Record updated successfully' : 'File uploaded successfully');
+                        toast.success(isEditMode ? 'Record updated' : 'File uploaded successfully');
                     }
-                }, 500);
+                }, 200); // Short delay for progress bar to hit 100% visually
             } else {
                 // ROBUST ERROR HANDLING (Handles Nginx 413 HTML responses)
                 const contentType = res.headers.get("content-type");
@@ -417,22 +538,58 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 transition-all">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl flex flex-col max-h-[85vh] animate-zoom-in border border-white/20">
+    // Progress calculation for visual indicator
+    const formProgress = (() => {
+        let filled = 0;
+        const fields = ['title', 'region_id', 'category_name', 'classification_rule', 'shelf', 'period_covered', 'volume', 'duplication'];
+        fields.forEach(f => { if (formData[f]) filled++; });
+        if (formData.file || isEditMode) filled++;
+        return Math.round((filled / (fields.length + 1)) * 100);
+    })();
 
-                {/* HEADER */}
-                <div className={`flex-none px-8 py-6 border-b flex justify-between items-center ${isVaultMode ? 'bg-gradient-to-r from-red-50 to-red-100/50 border-red-100' : 'bg-gradient-to-r from-slate-50 to-white border-slate-100'}`}>
-                    <div>
-                        <h2 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${isVaultMode ? 'text-red-800' : 'text-slate-800'}`}>
-                            {isVaultMode && (
-                                <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" /></svg>
-                            )}
-                            {isEditMode ? 'Edit Metadata' : (isVaultMode ? 'Vault Upload' : 'Add Document')}
-                        </h2>
-                        <p className={`text-xs font-medium mt-1 uppercase tracking-wider ${isVaultMode ? 'text-red-600' : 'text-slate-500'}`}>
-                            {isEditMode ? 'Update record details' : (isVaultMode ? 'Restricted Access • Encrypted Storage' : 'Secure PDF Repository')}
-                        </p>
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-4 transition-all">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl flex flex-col max-h-[88vh] animate-zoom-in border border-white/30 overflow-hidden">
+
+                {/* ENHANCED HEADER */}
+                <div className={`flex-none relative overflow-hidden ${isVaultMode ? 'bg-gradient-to-br from-red-600 via-red-700 to-rose-800' : isEditMode ? 'bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600' : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800'}`}>
+                    {/* Animated Background Pattern */}
+                    <div className="absolute inset-0 opacity-10">
+                        <div className="absolute top-0 -left-4 w-32 h-32 bg-white rounded-full mix-blend-overlay filter blur-xl animate-pulse"></div>
+                        <div className="absolute bottom-0 right-0 w-24 h-24 bg-white rounded-full mix-blend-overlay filter blur-xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+                    </div>
+
+                    <div className="relative px-8 py-6 flex justify-between items-start">
+                        <div className="flex items-start gap-4">
+                            {/* Icon Container */}
+                            <div className={`p-3 rounded-2xl ${isVaultMode ? 'bg-white/20' : isEditMode ? 'bg-white/20' : 'bg-white/20'} backdrop-blur-sm shadow-lg`}>
+                                {isVaultMode ? (
+                                    <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" /></svg>
+                                ) : isEditMode ? (
+                                    <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                                ) : (
+                                    <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" /></svg>
+                                )}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-extrabold text-white tracking-tight">
+                                    {isEditMode ? 'Edit Metadata' : (isVaultMode ? 'Secure Vault Upload' : 'Upload Document')}
+                                </h2>
+                                <p className="text-sm text-white/70 mt-0.5 font-medium">
+                                    {isEditMode ? 'Update record details and classification' : (isVaultMode ? 'Encrypted • Restricted Access' : 'Secure PDF Repository')}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Close Button */}
+                        <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-all text-white/80 hover:text-white">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="h-1 bg-black/20">
+                        <div className="h-full bg-white/80 transition-all duration-500 ease-out" style={{ width: `${formProgress}%` }}></div>
                     </div>
                 </div>
 
@@ -471,14 +628,39 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="group">
-                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Office / Division <span className="text-slate-300">(Optional)</span></label>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">
+                                            Office / Division {!isStaffUser && <span className="text-slate-300">(Optional)</span>}
+                                            {isStaffUser && <span className="text-amber-600">(Assigned)</span>}
+                                        </label>
                                         <div className="relative">
-                                            <select className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-white outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:bg-slate-50 appearance-none disabled:text-slate-400" value={selectedParentOffice} onChange={handleParentOfficeChange} disabled={!formData.region_id || (offices.length === 0 && !!formData.region_id)}>
-                                                <option value="">
-                                                    {formData.region_id && offices.length === 0 ? 'None (Province Only)' : 'Select Office...'}
-                                                </option>
-                                                {offices.map(o => <option key={o.office_id} value={o.office_id}>{o.code}</option>)}
+                                            <select
+                                                className={`w-full px-4 py-3 border rounded-xl text-sm font-bold outline-none transition-all appearance-none ${isStaffUser
+                                                    ? 'bg-amber-50 border-amber-200 text-amber-800 cursor-not-allowed'
+                                                    : 'border-slate-200 text-slate-700 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 disabled:bg-slate-50 disabled:text-slate-400'
+                                                    }`}
+                                                value={selectedParentOffice}
+                                                onChange={handleParentOfficeChange}
+                                                disabled={isStaffUser || !formData.region_id || (offices.length === 0 && !!formData.region_id)}
+                                            >
+                                                {isStaffUser ? (
+                                                    <option value={staffAssignments.parentOfficeId}>
+                                                        {staffAssignments.parentOfficeName || 'Loading...'}
+                                                    </option>
+                                                ) : (
+                                                    <>
+                                                        <option value="">
+                                                            {formData.region_id && offices.length === 0 ? 'None (Province Only)' : 'Select Office...'}
+                                                        </option>
+                                                        {offices.map(o => <option key={o.office_id} value={o.office_id}>{o.code}</option>)}
+                                                    </>
+                                                )}
                                             </select>
+                                            {isStaffUser && (
+                                                <div className="absolute right-10 top-1/2 -translate-y-1/2 text-[10px] bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-bold tracking-wide flex items-center gap-1">
+                                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3A5.25 5.25 0 0 0 12 1.5Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clipRule="evenodd" /></svg>
+                                                    LOCKED
+                                                </div>
+                                            )}
                                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                                             </div>
@@ -626,35 +808,114 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                             </div>
                         </div>
 
+                        {/* 2.5 NEW ATTRIBUTES GRID (TEXT INPUTS) */}
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* RECORDS MEDIUM */}
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Records Medium</label>
+                                <input
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:font-normal"
+                                    placeholder="e.g. Paper, Electronic, Microfilm"
+                                    value={formData.media_text}
+                                    onChange={(e) => setFormData({ ...formData, media_text: e.target.value })}
+                                />
+                            </div>
+
+                            {/* RESTRICTIONS */}
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Restrictions</label>
+                                <input
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:font-normal"
+                                    placeholder="e.g. Confidential, Open Access"
+                                    value={formData.restriction_text}
+                                    onChange={(e) => setFormData({ ...formData, restriction_text: e.target.value })}
+                                />
+                            </div>
+
+                            {/* FREQUENCY OF USE */}
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Frequency of Use</label>
+                                <input
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:font-normal"
+                                    placeholder="e.g. Daily, Monthly, Yearly"
+                                    value={formData.frequency_text}
+                                    onChange={(e) => setFormData({ ...formData, frequency_text: e.target.value })}
+                                />
+                            </div>
+
+                            {/* DISPOSITION PROVISION */}
+                            <div className="group">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Disposition Provision</label>
+                                <input
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:font-normal"
+                                    placeholder="e.g. R.A. 9470, NAP Circular 1"
+                                    value={formData.provision_text}
+                                    onChange={(e) => setFormData({ ...formData, provision_text: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
                         {/* 3. FILE UPLOAD & RESTRICTION */}
                         <div className="space-y-4">
-                            {/* DROP ZONE (MOVED HERE) */}
+                            {/* ENHANCED DROP ZONE */}
                             {!isEditMode || formData.replaceFile ? (
                                 <div
-                                    className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 group cursor-pointer
-                                    ${isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[1.02]' : 'border-slate-300 hover:border-indigo-400 hover:bg-slate-50'}`}
+                                    className={`relative rounded-2xl p-8 text-center transition-all duration-300 group cursor-pointer overflow-hidden
+                                    ${isDragging
+                                            ? 'bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-50 scale-[1.02] shadow-lg shadow-indigo-100'
+                                            : formData.file
+                                                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-200'
+                                                : 'bg-gradient-to-br from-slate-50 via-white to-slate-50 border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:from-indigo-50/50 hover:to-purple-50/50'}`}
                                     onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
                                 >
+                                    {/* Animated Border on Drag */}
+                                    {isDragging && (
+                                        <div className="absolute inset-0 rounded-2xl animate-pulse" style={{
+                                            background: 'linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7, #6366f1)',
+                                            backgroundSize: '300% 100%',
+                                            padding: '2px',
+                                            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                            WebkitMaskComposite: 'xor',
+                                            maskComposite: 'exclude'
+                                        }}></div>
+                                    )}
+
                                     <input type="file" required={!isEditMode} accept=".pdf,application/pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onChange={(e) => e.target.files.length > 0 && validateAndSetFile(e.target.files[0])} />
 
                                     {formData.file ? (
-                                        <div className="flex items-center justify-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
-                                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        <div className="flex items-center justify-center gap-5 animate-fade-in">
+                                            <div className="relative">
+                                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200">
+                                                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                                </div>
+                                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-white rounded-full flex items-center justify-center shadow-md">
+                                                    <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                </div>
                                             </div>
                                             <div className="text-left">
-                                                <p className="text-sm font-bold text-slate-700 truncate max-w-[200px]">{formData.file.name}</p>
-                                                <p className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full inline-block mt-1">{formatBytes(formData.file.size)}</p>
+                                                <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Ready to Upload</p>
+                                                <p className="text-sm font-bold text-slate-800 truncate max-w-[180px]">{formData.file.name}</p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-xs font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 px-2.5 py-1 rounded-full shadow-sm">{formatBytes(formData.file.size)}</span>
+                                                    <span className="text-xs font-medium text-slate-400">PDF Document</span>
+                                                </div>
                                             </div>
-                                            <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, file: null }) }} className="z-20 p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors"><svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg></button>
+                                            <button type="button" onClick={(e) => { e.preventDefault(); setFormData({ ...formData, file: null }) }} className="z-20 p-2.5 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-xl transition-all shadow-sm hover:shadow-md border border-slate-100 hover:border-red-200">
+                                                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                            </button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-2 pointer-events-none">
-                                            <div className="mx-auto w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
-                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                        <div className="space-y-3 pointer-events-none">
+                                            <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${isDragging ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-200 scale-110' : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400 group-hover:from-indigo-100 group-hover:to-purple-100 group-hover:text-indigo-500'}`}>
+                                                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" /></svg>
                                             </div>
-                                            <p className="text-sm font-bold text-indigo-600">{isEditMode ? 'Click to replace file' : 'Click to upload PDF'}</p>
-                                            {isEditMode && <button type="button" onClick={() => setFormData({ ...formData, replaceFile: false })} className="pointer-events-auto text-xs text-slate-400 underline hover:text-slate-600">Cancel Replace</button>}
+                                            <div>
+                                                <p className={`text-base font-bold transition-colors ${isDragging ? 'text-indigo-600' : 'text-slate-600 group-hover:text-indigo-600'}`}>
+                                                    {isDragging ? 'Drop your PDF here!' : (isEditMode ? 'Click to replace file' : 'Drag & drop your PDF')}
+                                                </p>
+                                                <p className="text-xs text-slate-400 mt-1">or click to browse • Max 50MB</p>
+                                            </div>
+                                            {isEditMode && <button type="button" onClick={() => setFormData({ ...formData, replaceFile: false })} className="pointer-events-auto text-xs font-medium text-slate-400 hover:text-indigo-600 underline underline-offset-2 transition-colors">Cancel Replace</button>}
                                         </div>
                                     )}
                                 </div>
@@ -715,20 +976,83 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                     </form>
                 </div>
 
-                {/* FOOTER ACTIONS */}
-                <div className="flex-none p-6 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
-                    {loading && <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden mb-4"><div className={`h-1.5 rounded-full transition-all duration-300 ${isEditMode ? 'bg-amber-500' : 'bg-indigo-600'}`} style={{ width: `${uploadProgress}%` }}></div></div>}
+                {/* ENHANCED FOOTER */}
+                <div className={`flex-none p-6 border-t ${isVaultMode ? 'bg-gradient-to-r from-red-50 to-rose-50 border-red-100' : 'bg-gradient-to-r from-slate-50 to-white border-slate-100'}`}>
+                    {/* Upload Progress */}
+                    {loading && (
+                        <div className="mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    {isEditMode ? 'Saving...' : 'Uploading...'}
+                                </span>
+                                <span className={`text-sm font-bold ${isEditMode ? 'text-amber-600' : isVaultMode ? 'text-red-600' : 'text-indigo-600'}`}>
+                                    {uploadProgress}%
+                                </span>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-300 ${isEditMode ? 'bg-gradient-to-r from-amber-400 to-orange-500' : isVaultMode ? 'bg-gradient-to-r from-red-500 to-rose-600' : 'bg-gradient-to-r from-indigo-500 to-purple-600'}`}
+                                    style={{ width: `${uploadProgress}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3.5 text-sm font-bold text-slate-500 hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all">Cancel</button>
-                        <button type="submit" form="record-form" disabled={loading} className={`flex-1 py-3.5 text-sm font-bold text-white rounded-xl shadow-lg hover:-translate-y-0.5 transition-all ${isEditMode ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}>
-                            {loading ? (isEditMode ? 'Saving Changes...' : 'Uploading File...') : (isEditMode ? 'Save Changes' : 'Confirm Upload')}
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={loading}
+                            className="flex-1 py-3.5 text-sm font-bold text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="record-form"
+                            disabled={loading}
+                            className={`flex-1 py-3.5 text-sm font-bold text-white rounded-xl shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 group
+                                ${isEditMode
+                                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-200 hover:shadow-amber-300'
+                                    : isVaultMode
+                                        ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 shadow-red-200 hover:shadow-red-300'
+                                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-indigo-200 hover:shadow-indigo-300'
+                                } ${!loading && 'hover:-translate-y-0.5 hover:shadow-xl'}`}
+                        >
+                            {loading ? (
+                                <>
+                                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>{isEditMode ? 'Saving...' : 'Uploading...'}</span>
+                                </>
+                            ) : (
+                                <>
+                                    {isEditMode ? (
+                                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                                    ) : isVaultMode ? (
+                                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                                    ) : (
+                                        <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+                                    )}
+                                    <span>{isEditMode ? 'Save Changes' : (isVaultMode ? 'Secure Upload' : 'Upload Document')}</span>
+                                </>
+                            )}
                         </button>
                     </div>
+
+                    {/* Form Completion Hint */}
+                    {!loading && formProgress < 100 && (
+                        <p className="text-center text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                            Complete all required fields to submit
+                        </p>
+                    )}
                 </div>
 
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

@@ -8,7 +8,7 @@ import { useRegions } from '../../context/RegionContext';
 
 // --- ICONS ---
 const Icons = {
-  Folder: () => <svg className="w-16 h-16 text-amber-400 drop-shadow-sm" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
+  Folder: ({ className = "text-amber-400" }) => <svg className={`w-16 h-16 drop-shadow-sm ${className}`} fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
   FolderOpen: () => <svg className="w-16 h-16 text-amber-400 drop-shadow-md" fill="currentColor" viewBox="0 0 24 24"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-15a3 3 0 0 0-3 3V18a3 3 0 0 0 3 3h15ZM1.5 10.146V6a3 3 0 0 1 3-3h5.379a2.25 2.25 0 0 1 1.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 0 1 3 3v1.146A4.483 4.483 0 0 0 19.5 9h-15a4.483 4.483 0 0 0-3 1.146Z" /></svg>,
   FileRule: () => <svg className="w-10 h-10 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>,
   Home: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>,
@@ -22,6 +22,18 @@ const Icons = {
   ArrowLeft: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>,
   Building: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
 };
+
+const FolderColors = {
+  amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: 'text-amber-400', hover: 'group-hover:text-amber-700', grad: 'to-amber-500/5', ring: 'focus:ring-amber-500/20', inputBorder: 'focus:border-amber-500', indicator: 'bg-amber-400' },
+  blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', icon: 'text-blue-400', hover: 'group-hover:text-blue-700', grad: 'to-blue-500/5', ring: 'focus:ring-blue-500/20', inputBorder: 'focus:border-blue-500', indicator: 'bg-blue-400' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', icon: 'text-emerald-400', hover: 'group-hover:text-emerald-700', grad: 'to-emerald-500/5', ring: 'focus:ring-emerald-500/20', inputBorder: 'focus:border-emerald-500', indicator: 'bg-emerald-400' },
+  rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200', icon: 'text-rose-400', hover: 'group-hover:text-rose-700', grad: 'to-rose-500/5', ring: 'focus:ring-rose-500/20', inputBorder: 'focus:border-rose-500', indicator: 'bg-rose-400' },
+  purple: { bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-200', icon: 'text-purple-400', hover: 'group-hover:text-purple-700', grad: 'to-purple-500/5', ring: 'focus:ring-purple-500/20', inputBorder: 'focus:border-purple-500', indicator: 'bg-purple-400' },
+  slate: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', icon: 'text-slate-400', hover: 'group-hover:text-slate-700', grad: 'to-slate-500/5', ring: 'focus:ring-slate-500/20', inputBorder: 'focus:border-slate-500', indicator: 'bg-slate-400' },
+  cyan: { bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-200', icon: 'text-cyan-400', hover: 'group-hover:text-cyan-700', grad: 'to-cyan-500/5', ring: 'focus:ring-cyan-500/20', inputBorder: 'focus:border-cyan-500', indicator: 'bg-cyan-400' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-200', icon: 'text-indigo-400', hover: 'group-hover:text-indigo-700', grad: 'to-indigo-500/5', ring: 'focus:ring-indigo-500/20', inputBorder: 'focus:border-indigo-500', indicator: 'bg-indigo-400' },
+};
+
 
 const Codex = () => {
   const { user } = useAuth();
@@ -83,7 +95,7 @@ const Codex = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // FORMS
-  const [catForm, setCatForm] = useState({ name: '', region: 'Global' });
+  const [catForm, setCatForm] = useState({ name: '', region: 'Global', color: 'amber' });
   const [ruleForm, setRuleForm] = useState({
     type_name: '',
     retention_value: '',
@@ -116,9 +128,9 @@ const Codex = () => {
       // Create Folder
       // SMART PRE-FILL: If Regional Admin, lock to their region
       if (isSuperAdmin) {
-        setCatForm({ name: '', region: 'Global' });
+        setCatForm({ name: '', region: 'Global', color: 'amber' });
       } else {
-        setCatForm({ name: '', region: getUserRegionName() });
+        setCatForm({ name: '', region: getUserRegionName(), color: 'amber' });
       }
       setIsCategoryModalOpen(true);
     }
@@ -260,43 +272,48 @@ const Codex = () => {
                   // Staff see only Global or their assigned region's categories
                   return cat.region === 'Global' || cat.region === getUserRegionName();
                 })
-                .map((cat) => (
-                  <div
-                    key={cat.category_id}
-                    onClick={() => setActiveFolder(cat)}
-                    className="group relative bg-white border border-slate-100 hover:border-amber-200 p-8 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-300 shadow-sm hover:shadow-2xl hover:-translate-y-1 overflow-hidden"
-                  >
-                    {/* Glow Effect */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-br from-transparent to-amber-500/5"></div>
+                .map((cat) => {
+                  const colors = FolderColors[cat.color] || FolderColors.amber;
 
-                    {/* Icon */}
-                    <div className="transition-transform duration-300 group-hover:scale-110 mb-6 relative z-10">
-                      <Icons.Folder />
-                    </div>
+                  return (
+                    <div
+                      key={cat.category_id}
+                      onClick={() => setActiveFolder(cat)}
+                      className={`group relative bg-white border hover:border-2 p-8 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer transition-all duration-300 shadow-sm hover:shadow-2xl hover:-translate-y-1 overflow-hidden ${colors.border} ${colors.hover.replace('text', 'border')}`}
+                    >
+                      {/* Glow Effect */}
+                      <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none bg-gradient-to-br from-transparent ${colors.grad}`}></div>
 
-                    {/* Content */}
-                    <div className="relative z-10 text-center">
-                      <h3 className="font-bold text-lg text-slate-700 group-hover:text-amber-700 transition-colors">{cat.name}</h3>
-
-                      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mt-3 shadow-sm border
-                      ${cat.region === 'Global' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
-                        {cat.region === 'Global' ? <Icons.Globe /> : <Icons.MapPin />}
-                        {cat.region}
+                      {/* Icon */}
+                      <div className="transition-transform duration-300 group-hover:scale-110 mb-6 relative z-10">
+                        <Icons.Folder className={colors.icon} />
                       </div>
-                    </div>
 
-                    {/* Delete Button */}
-                    {(isSuperAdmin || (canEdit && cat.region === getUserRegionName())) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteCategory(cat.category_id); }}
-                        className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
-                        title="Delete Folder"
-                      >
-                        <Icons.Trash />
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      {/* Content */}
+                      <div className="relative z-10 text-center">
+                        <h3 className={`font-bold text-lg text-slate-700 ${colors.hover} transition-colors`}>{cat.name}</h3>
+
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mt-3 shadow-sm border
+                      ${cat.region === 'Global' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-blue-50 text-blue-600 border-blue-100'}`}>
+                          {cat.region === 'Global' ? <Icons.Globe /> : <Icons.MapPin />}
+                          {cat.region}
+                        </div>
+                      </div>
+
+                      {/* Delete Button */}
+                      {(isSuperAdmin || (canEdit && cat.region === getUserRegionName())) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteCategory(cat.category_id); }}
+                          className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all z-20"
+                          title="Delete Folder"
+                        >
+                          <Icons.Trash />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })
+              }
 
               {/* Empty State */}
               {categories.length === 0 && (
@@ -432,6 +449,23 @@ const Codex = () => {
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"><Icons.MapPin /></div>
                   </div>
                 )}
+                <div className="space-y-3">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest pl-1 mb-1 block">Folder Color</label>
+                  <div className="flex flex-wrap gap-3">
+                    {Object.entries(FolderColors).map(([key, value]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setCatForm({ ...catForm, color: key })}
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${value.bg} ${catForm.color === key ? 'ring-2 ring-offset-2 ring-slate-400 scale-110 shadow-md' : 'hover:scale-110 hover:shadow-sm'}`}
+                        title={key.charAt(0).toUpperCase() + key.slice(1)}
+                      >
+                        <div className={`w-4 h-4 rounded-full ${value.indicator}`}></div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </div>
 
               <div className="flex gap-3 pt-2">

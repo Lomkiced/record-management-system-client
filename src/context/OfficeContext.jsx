@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 
 const OfficeContext = createContext();
@@ -18,7 +18,7 @@ export const OfficeProvider = ({ children }) => {
     // Fetch offices by params (region_id, parent_office_id, toplevel, page, limit)
     const [pagination, setPagination] = useState({ total: 0, current: 1, pages: 1 });
 
-    const fetchOffices = async (params = null) => {
+    const fetchOffices = useCallback(async (params = null) => {
         setLoading(true);
         try {
             const token = getToken();
@@ -74,22 +74,22 @@ export const OfficeProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Get TOP-LEVEL offices for a specific region (excludes sub-offices)
-    const getOfficesByRegion = async (regionId) => {
+    const getOfficesByRegion = useCallback(async (regionId) => {
         if (!regionId) return [];
         return await fetchOffices({ region_id: regionId, toplevel: 'true' });
-    };
+    }, [fetchOffices]);
 
     // Get sub-offices for a specific parent office
-    const getSubOffices = async (parentOfficeId) => {
+    const getSubOffices = useCallback(async (parentOfficeId) => {
         if (!parentOfficeId) return [];
         return await fetchOffices({ parent_office_id: parentOfficeId });
-    };
+    }, [fetchOffices]);
 
     // Add new office
-    const addOffice = async (data) => {
+    const addOffice = useCallback(async (data) => {
         try {
             const token = getToken();
             const response = await fetch('/api/offices', {
@@ -115,10 +115,10 @@ export const OfficeProvider = ({ children }) => {
             toast.error('Server error');
             return false;
         }
-    };
+    }, [fetchOffices]);
 
     // Update office
-    const updateOffice = async (id, data) => {
+    const updateOffice = useCallback(async (id, data) => {
         try {
             const token = getToken();
             const response = await fetch(`/api/offices/${id}`, {
@@ -143,10 +143,10 @@ export const OfficeProvider = ({ children }) => {
             toast.error('Server error');
             return false;
         }
-    };
+    }, []);
 
     // Delete office
-    const deleteOffice = async (id) => {
+    const deleteOffice = useCallback(async (id) => {
         try {
             const token = getToken();
             const response = await fetch(`/api/offices/${id}`, {
@@ -168,20 +168,22 @@ export const OfficeProvider = ({ children }) => {
             toast.error('Server error');
             return false;
         }
-    };
+    }, []);
+
+    const value = useMemo(() => ({
+        offices,
+        loading,
+        pagination,
+        fetchOffices,
+        getOfficesByRegion,
+        getSubOffices,
+        addOffice,
+        updateOffice,
+        deleteOffice
+    }), [offices, loading, pagination, fetchOffices, getOfficesByRegion, getSubOffices, addOffice, updateOffice, deleteOffice]);
 
     return (
-        <OfficeContext.Provider value={{
-            offices,
-            loading,
-            pagination,
-            fetchOffices,
-            getOfficesByRegion,
-            getSubOffices,
-            addOffice,
-            updateOffice,
-            deleteOffice
-        }}>
+        <OfficeContext.Provider value={value}>
             {children}
         </OfficeContext.Provider>
     );

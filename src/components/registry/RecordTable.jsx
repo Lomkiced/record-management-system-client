@@ -6,8 +6,18 @@ const Icons = {
   Restore: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
   Destroy: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
   File: () => <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-  Lock: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+  Lock: () => <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
+  // Metadata Icons
+  Calendar: () => <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+  Cube: () => <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>,
+  Copy: () => <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>,
+  Clock: () => <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  Clipboard: () => <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>,
 };
+
+// --- VALUE MAPPERS ---
+const TIME_VALUE_MAP = { 'T': 'Temporary', 'P': 'Permanent' };
+const UTILITY_VALUE_MAP = { 'Adm': 'Administrative', 'F': 'Fiscal', 'L': 'Legal', 'Arc': 'Archival' };
 
 const RecordTable = ({ records, onEdit, onArchive, onRestore, onDestroy, onView, viewMode, highlightedRecordId, confirm }) => {
   if (!records || records.length === 0) {
@@ -61,6 +71,15 @@ const RecordTable = ({ records, onEdit, onArchive, onRestore, onDestroy, onView,
           <th className="px-6 py-4">Ref ID / Title</th>
           <th className="px-6 py-4">Classification</th>
           <th className="px-6 py-4">Location</th>
+          <th className="px-6 py-4">Period</th>
+          <th className="px-6 py-4">Vol.</th>
+          <th className="px-6 py-4">Duplication</th>
+          <th className="px-6 py-4">Time</th>
+          <th className="px-6 py-4">Utility</th>
+          <th className="px-6 py-4">Medium</th>
+          <th className="px-6 py-4">Restrictions</th>
+          <th className="px-6 py-4">Frequency</th>
+          <th className="px-6 py-4">Provision</th>
           <th className="px-6 py-4">Status</th>
           <th className="px-6 py-4 text-right">Actions</th>
         </tr>
@@ -91,6 +110,51 @@ const RecordTable = ({ records, onEdit, onArchive, onRestore, onDestroy, onView,
               <td className="px-6 py-4">
                 <div className="text-sm font-bold text-slate-600">{record.shelf || <span className="text-slate-400 italic font-normal">Unsorted</span>}</div>
               </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">{record.period_covered || <span className="text-slate-400 font-normal">—</span>}</span>
+              </td>
+
+              <td className="px-6 py-4">
+                {record.volume ? (
+                  <span className="text-sm font-semibold text-slate-700">
+                    {record.volume} <span className="text-xs text-slate-400 font-normal">cu.m</span>
+                  </span>
+                ) : <span className="text-sm text-slate-400">—</span>}
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">{record.duplication || <span className="text-slate-400 font-normal">—</span>}</span>
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">
+                  {record.time_value ? (TIME_VALUE_MAP[record.time_value] || record.time_value) : <span className="text-slate-400 font-normal">—</span>}
+                </span>
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">
+                  {record.utility_value ? (UTILITY_VALUE_MAP[record.utility_value] || record.utility_value) : <span className="text-slate-400 font-normal">—</span>}
+                </span>
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">{record.media_text || <span className="text-slate-400 font-normal">—</span>}</span>
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">{record.restriction_text || <span className="text-slate-400 font-normal">—</span>}</span>
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">{record.frequency_text || <span className="text-slate-400 font-normal">—</span>}</span>
+              </td>
+
+              <td className="px-6 py-4">
+                <span className="text-sm font-semibold text-slate-700">{record.provision_text || <span className="text-slate-400 font-normal">—</span>}</span>
+              </td>
+
               <td className="px-6 py-4">
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${getStatusStyle(record.status)}`}>
                   {record.status}

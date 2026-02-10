@@ -97,7 +97,10 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
     }, [isOpen, editingUser, isSuperAdmin, regions, userRegionId]);
 
     // --- NEW: Fetch offices when region changes ---
+    // --- NEW: Fetch offices when region changes OR modal opens ---
     useEffect(() => {
+        if (!isOpen) return; // Guard: Only fetch when visible
+
         const regionId = formData.region_id;
         if (!regionId) {
             setOffices([]);
@@ -120,7 +123,7 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
             }
         };
         fetchOffices();
-    }, [formData.region_id]); // Removed getOfficesByRegion to prevent infinite loop
+    }, [formData.region_id, isOpen]); // Added isOpen to dependencies
 
     // --- NEW: Fetch sub-offices when office changes ---
     useEffect(() => {
@@ -445,7 +448,7 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                                             onChange={e => {
                                                 setFormData({ ...formData, region_id: e.target.value, office: '' });
                                                 setSelectedOfficeId('');
-                                                setSelectedSubOfficeId('');
+                                                setSelectedSubOfficeIds([]); // Corrected from setSelectedSubOfficeId('')
                                             }}
                                         >
                                             <option value="">Select Region Assignment...</option>
@@ -468,9 +471,9 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                             )}
 
                             {/* --- NEW: Office Assignment Section --- */}
-                            {/* Show for ADMIN and STAFF roles when region is set */}
+                            {/* Show for ADMIN and STAFF roles when region is set. Always show to allow "No Office" feedback */}
                             {formData.region_id && formData.role !== 'SUPER_ADMIN' && (
-                                <div className="space-y-4 p-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-xl border border-indigo-100">
+                                <div className="space-y-4 p-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-xl border border-indigo-100 animate-fade-in">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Icons.Building /></div>
                                         <div>
@@ -484,16 +487,17 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Primary Office</label>
                                         <div className="relative">
                                             <select
-                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none cursor-pointer appearance-none disabled:opacity-60"
+                                                className={`w-full px-4 py-3 bg-white border rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all outline-none cursor-pointer appearance-none disabled:opacity-60
+                                                ${offices.length === 0 ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200'}`}
                                                 value={selectedOfficeId}
                                                 onChange={e => {
                                                     setSelectedOfficeId(e.target.value);
-                                                    setSelectedSubOfficeId('');
+                                                    setSelectedSubOfficeIds([]); // Corrected from setSelectedSubOfficeId('')
                                                 }}
-                                                disabled={loadingOffices || offices.length === 0}
+                                                disabled={loadingOffices}
                                             >
                                                 <option value="">
-                                                    {loadingOffices ? 'Loading offices...' : offices.length === 0 ? 'No offices available' : 'Select Office...'}
+                                                    {loadingOffices ? 'Loading offices...' : offices.length === 0 ? '⚠ No offices found in this region' : 'Select Office...'}
                                                 </option>
                                                 {offices.map(o => (
                                                     <option key={o.office_id} value={o.office_id}>
@@ -503,10 +507,16 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                                             </select>
                                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"><Icons.ChevronDown /></div>
                                         </div>
+                                        {offices.length === 0 && !loadingOffices && (
+                                            <p className="mt-2 text-[11px] text-amber-600 font-medium flex items-center gap-1">
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                                Action Required: Please go to <b>Offices</b> menu to create units.
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* ========== SUB-OFFICE MULTI-SELECT (Staff Assignment) ========== */}
-                                    {formData.role === 'STAFF' && selectedOfficeId && (
+                                    {formData.role === 'STAFF' && selectedOfficeId && (subOffices.length > 0 || loadingSubOffices) && (
                                         <div className="animate-fade-in space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <label className="block text-xs font-bold text-slate-500 uppercase">
@@ -525,11 +535,6 @@ const UserModal = ({ isOpen, onClose, user: editingUser, isSuperAdmin, regions, 
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                                                     </svg>
                                                     Loading sub-offices...
-                                                </div>
-                                            ) : subOffices.length === 0 ? (
-                                                <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center">
-                                                    <p className="text-sm text-slate-500">No sub-offices found under this office.</p>
-                                                    <p className="text-xs text-slate-400 mt-1">The staff will be assigned to the main office only.</p>
                                                 </div>
                                             ) : (
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

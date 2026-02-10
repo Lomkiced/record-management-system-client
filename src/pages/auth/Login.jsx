@@ -22,7 +22,7 @@ const Login = () => {
     refreshBranding();
   }, []);
 
-  // Particle animation effect
+  // Particle animation effect - Subtle Background
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -32,42 +32,47 @@ const Login = () => {
     let particles = [];
 
     const resize = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
       ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      init();
     };
 
-    const createParticle = () => ({
-      x: Math.random() * canvas.offsetWidth,
-      y: Math.random() * canvas.offsetHeight,
-      size: Math.random() * 2 + 0.5,
-      speedX: (Math.random() - 0.5) * 0.3,
-      speedY: (Math.random() - 0.5) * 0.3,
-      opacity: Math.random() * 0.5 + 0.2
-    });
+    class Particle {
+      constructor() {
+        this.x = Math.random() * canvas.offsetWidth;
+        this.y = Math.random() * canvas.offsetHeight;
+        this.size = Math.random() * 2 + 0.5;
+        this.speedX = (Math.random() - 0.5) * 0.2;
+        this.speedY = (Math.random() - 0.5) * 0.2;
+        this.opacity = Math.random() * 0.3 + 0.1;
+      }
+      update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x < 0 || this.x > canvas.offsetWidth) this.speedX *= -1;
+        if (this.y < 0 || this.y > canvas.offsetHeight) this.speedY *= -1;
+      }
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+        ctx.fill();
+      }
+    }
 
     const init = () => {
-      resize();
-      particles = Array.from({ length: 50 }, createParticle);
+      particles = Array.from({ length: 40 }, () => new Particle());
     };
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
-
       particles.forEach(p => {
-        p.x += p.speedX;
-        p.y += p.speedY;
-
-        if (p.x < 0 || p.x > canvas.offsetWidth) p.speedX *= -1;
-        if (p.y < 0 || p.y > canvas.offsetHeight) p.speedY *= -1;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
-        ctx.fill();
+        p.update();
+        p.draw();
       });
-
-      // Draw connections
+      // Draw subtle connections
       particles.forEach((p1, i) => {
         particles.slice(i + 1).forEach(p2 => {
           const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
@@ -75,17 +80,19 @@ const Login = () => {
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * (1 - dist / 100)})`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.05 * (1 - dist / 100)})`;
             ctx.stroke();
           }
         });
       });
-
       animationId = requestAnimationFrame(animate);
     };
 
-    init();
-    animate();
+    setTimeout(() => {
+      resize();
+      animate();
+    }, 100);
+
     window.addEventListener('resize', resize);
 
     return () => {
@@ -148,7 +155,7 @@ const Login = () => {
       {/* LEFT HERO PANEL */}
       <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
         {/* Particle Canvas */}
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-10" />
 
         {/* Gradient Background */}
         <div className="absolute inset-0" style={{
@@ -156,91 +163,62 @@ const Login = () => {
                        radial-gradient(ellipse at 70% 80%, ${branding.secondaryColor}20, transparent 50%)`
         }} />
 
-        {/* 3D Animated Orb */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-80 h-80">
-            {/* Outer glow rings */}
-            <div className="absolute inset-0 rounded-full animate-ping opacity-10"
-              style={{ background: `radial-gradient(circle, ${branding.primaryColor}, transparent 70%)`, animationDuration: '3s' }} />
-            <div className="absolute -inset-8 rounded-full animate-pulse opacity-20"
-              style={{ background: `radial-gradient(circle, ${branding.secondaryColor}, transparent 60%)`, animationDuration: '4s' }} />
+        {/* FLOATING LOGO */}
+        <div className="absolute inset-0 flex items-center justify-center z-20">
+          <div className="relative animate-float">
 
-            {/* Main Orb */}
-            <div className="absolute inset-4 rounded-full shadow-2xl animate-float"
-              style={{
-                background: `
-                  radial-gradient(ellipse at 30% 30%, rgba(255,255,255,0.4), transparent 50%),
-                  radial-gradient(ellipse at 70% 70%, ${branding.secondaryColor}80, transparent 60%),
-                  linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})
-                `,
-                boxShadow: `
-                  0 0 80px ${branding.primaryColor}40,
-                  inset 0 0 60px rgba(255,255,255,0.1),
-                  0 20px 60px rgba(0,0,0,0.5)
-                `
-              }}>
-              {/* Highlight */}
-              <div className="absolute top-8 left-10 w-16 h-8 bg-white/30 rounded-full blur-xl transform -rotate-45" />
-            </div>
+            {/* Glow Behind */}
+            <div className="absolute inset-0 blur-3xl opacity-40 rounded-full animate-pulse"
+              style={{ background: `radial-gradient(circle, ${branding.primaryColor}, transparent 70%)` }} />
 
-            {/* Orbiting ring */}
-            <div className="absolute inset-0 animate-spin-slow">
-              <div className="absolute top-1/2 left-0 w-3 h-3 -translate-y-1/2 -translate-x-1/2 rounded-full"
-                style={{ background: branding.primaryColor, boxShadow: `0 0 20px ${branding.primaryColor}` }} />
-            </div>
+            {/* The Logo */}
+            {branding.logoUrl ? (
+              <img
+                src={branding.logoUrl}
+                alt="System Logo"
+                className="relative w-64 h-64 object-contain drop-shadow-2xl transition-all duration-500 hover:scale-105"
+                style={{ filter: `drop-shadow(0 20px 40px ${branding.primaryColor}40)` }}
+              />
+            ) : (
+              <div className="w-48 h-48 rounded-3xl flex items-center justify-center shadow-2xl"
+                style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
+                <Sparkles className="w-24 h-24 text-white animate-pulse" />
+              </div>
+            )}
+
+            {/* Reflection / Ground Shadow */}
+            <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-40 h-4 bg-black/40 blur-xl rounded-full animate-shadow" />
+
           </div>
         </div>
 
         {/* Content Overlay */}
-        <div className="absolute inset-0 flex flex-col justify-between p-12 z-10">
-          {/* Top - Branding */}
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl p-0.5 shadow-xl"
-              style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
-              <div className="w-full h-full rounded-[14px] bg-slate-950/50 backdrop-blur flex items-center justify-center">
-                {branding.logoUrl ? (
-                  <img src={branding.logoUrl} className="w-8 h-8 object-contain" alt="Logo" />
-                ) : (
-                  <Sparkles className="w-5 h-5 text-white" />
-                )}
-              </div>
-            </div>
-            <div>
-              <h2 className="text-white font-bold text-lg tracking-tight">{branding.systemName}</h2>
-              <p className="text-slate-500 text-xs font-medium">{branding.orgName}</p>
-            </div>
+        <div className="absolute inset-0 flex flex-col justify-between p-12 z-20 pointer-events-none">
+          {/* Top - Branding (Without Logo) */}
+          <div className="mt-4">
+            <h2 className="text-white font-bold text-lg tracking-tight border-l-4 pl-4"
+              style={{ borderColor: branding.primaryColor }}>
+              {branding.systemName}
+            </h2>
+            <p className="text-slate-500 text-xs font-medium pl-5">{branding.orgName}</p>
           </div>
 
           {/* Center - Welcome Text */}
           <div className="max-w-md">
-            <h1 className="text-5xl font-black text-white leading-tight mb-4">
+            <h1 className="text-5xl font-black text-white leading-tight mb-4 drop-shadow-lg">
               Welcome
               <span className="block text-transparent bg-clip-text"
                 style={{ backgroundImage: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
                 Back
               </span>
             </h1>
-            <p className="text-slate-400 text-lg leading-relaxed">{branding.welcomeMsg}</p>
-          </div>
-
-          {/* Bottom - Features */}
-          <div className="flex gap-6">
-            {[
-              { label: 'Secure', desc: '256-bit encryption' },
-              { label: 'Fast', desc: 'Instant access' },
-              { label: 'Reliable', desc: '99.9% uptime' }
-            ].map((item, i) => (
-              <div key={i} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-4">
-                <p className="text-white font-bold text-sm">{item.label}</p>
-                <p className="text-slate-500 text-xs">{item.desc}</p>
-              </div>
-            ))}
+            <p className="text-slate-400 text-lg leading-relaxed max-w-sm">{branding.welcomeMsg}</p>
           </div>
         </div>
       </div>
 
       {/* RIGHT LOGIN PANEL */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative z-30">
         {/* Mobile background gradient */}
         <div className="lg:hidden absolute inset-0" style={{
           background: `radial-gradient(ellipse at 50% 0%, ${branding.primaryColor}15, transparent 60%)`
@@ -249,12 +227,12 @@ const Login = () => {
         <div className="w-full max-w-md relative z-10">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-xl mb-4"
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl shadow-xl mb-4 animate-float"
               style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})` }}>
               {branding.logoUrl ? (
-                <img src={branding.logoUrl} className="w-10 h-10 object-contain" alt="Logo" />
+                <img src={branding.logoUrl} className="w-12 h-12 object-contain" alt="Logo" />
               ) : (
-                <Sparkles className="w-7 h-7 text-white" />
+                <Sparkles className="w-8 h-8 text-white" />
               )}
             </div>
             <h1 className="text-2xl font-bold text-white">{branding.systemName}</h1>
@@ -399,8 +377,12 @@ const Login = () => {
       {/* Custom Animations */}
       <style>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(3deg); }
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-30px); }
+        }
+        @keyframes shadow {
+          0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.4; }
+          50% { transform: translateX(-50%) scale(0.8); opacity: 0.2; }
         }
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
@@ -420,6 +402,7 @@ const Login = () => {
           75% { transform: translateX(5px); }
         }
         .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-shadow { animation: shadow 6s ease-in-out infinite; }
         .animate-spin-slow { animation: spin-slow 20s linear infinite; }
         .animate-scale-in { animation: scale-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
         .animate-shimmer { animation: shimmer 1.5s infinite; }

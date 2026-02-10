@@ -35,7 +35,8 @@ export const RegistryProvider = ({ children }) => {
         region: activeFilters.region || '',
         office_id: activeFilters.office_id || '',
         shelf: activeFilters.shelf || '',
-        restricted_only: activeFilters.restricted_only // Pass as-is, no default
+        restricted_only: activeFilters.restricted_only, // Pass as-is, no default
+        _t: Date.now() // Force fresh fetch
       });
 
       if (result) {

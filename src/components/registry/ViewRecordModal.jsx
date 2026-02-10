@@ -62,6 +62,30 @@ const ViewRecordModal = ({ isOpen, onClose, record }) => {
                 {record.disposal_date ? `Retain until ${record.disposal_date}` : 'Permanent Retention'}
               </p>
             </div>
+
+            {/* NEW ATTRIBUTES */}
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Records Medium</p>
+              <p className="text-sm font-medium text-gray-800">{record.media_text || 'N/A'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Restrictions</p>
+              <p className="text-sm font-medium text-gray-800">
+                {record.restriction_text ? (
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold ${record.restriction_text.toLowerCase().includes('restricted') || record.restriction_text.toLowerCase().includes('confidential') ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {record.restriction_text}
+                  </span>
+                ) : 'None'}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Frequency of Use</p>
+              <p className="text-sm font-medium text-gray-800">{record.frequency_text || 'Unspecified'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Disposition Provision</p>
+              <p className="text-sm font-medium text-gray-800">{record.provision_text || 'N/A'}</p>
+            </div>
           </div>
 
           {/* 3. Audit Trail Stub */}
