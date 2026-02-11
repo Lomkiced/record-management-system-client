@@ -20,6 +20,7 @@ const Icons = {
   Logout: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>,
   Building: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" /></svg>,
   Archive: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>,
+  Lock: (props) => <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>,
 };
 
 // --- NAV ITEM ---
@@ -59,7 +60,7 @@ const Sidebar = () => {
     // Define Menu Structure
     const ADMIN_MENU = [
       { category: "Overview", items: [{ path: "/admin", label: "Dashboard", icon: Icons.Dashboard }] },
-      { category: "Governance", items: [{ path: "/offices", label: "Offices", icon: Icons.Building }, { path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
+      { category: "Governance", items: [{ path: "/offices", label: "Offices", icon: Icons.Building }, { path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
       { category: "Security", items: [{ path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
     ];
 
@@ -72,11 +73,11 @@ const Sidebar = () => {
       'ADMIN': ADMIN_MENU,
       'REGIONAL_ADMIN': [
         { category: "Overview", items: [{ path: "/admin", label: "Dashboard", icon: Icons.Dashboard }] },
-        { category: "Governance", items: [{ path: "/offices", label: "Offices", icon: Icons.Building }, { path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
+        { category: "Governance", items: [{ path: "/offices", label: "Offices", icon: Icons.Building }, { path: "/registry", label: "Registry", icon: Icons.Folder }, { path: "/codex", label: "Classification", icon: Icons.Book }, { path: "/archive", label: "Archive", icon: Icons.Archive }, { path: "/users", label: "Personnel", icon: Icons.Users }] },
         { category: "Security", items: [{ path: "/audit", label: "Audit Logs", icon: Icons.Shield }] },
       ],
       'STAFF': [
-        { category: 'Workspace', items: [{ path: '/staff', label: 'My Dashboard', icon: Icons.Home }, { path: '/registry', label: 'Records', icon: Icons.Search }, { path: '/codex', label: 'Classifications', icon: Icons.Book }, { path: '/archive', label: 'Archive', icon: Icons.Archive }] }
+        { category: 'Workspace', items: [{ path: '/staff', label: 'My Dashboard', icon: Icons.Home }, { path: '/registry', label: 'Records', icon: Icons.Search }, { path: '/codex', label: 'Classifications', icon: Icons.Book }, { path: '/registry?vault=true', label: 'Restricted Vault', icon: Icons.Lock }, { path: '/archive', label: 'Archive', icon: Icons.Archive }] }
       ]
     };
 

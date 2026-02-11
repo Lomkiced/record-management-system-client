@@ -76,7 +76,7 @@ const Registry = () => {
   const { user } = useAuth();
   const { records, pagination, fetchRecords, destroyRecord, archiveRecord, restoreRecord, loading } = useRegistry();
   const { categories } = useCodex();
-  const { regions } = useRegions();
+  const { regions, refreshRegions } = useRegions();
 
   const { getOfficesByRegion, getSubOffices } = useOffices();
   const { confirm } = useConfirmation();
@@ -102,36 +102,13 @@ const Registry = () => {
   const [searchTerm, setSearchTerm] = useState(searchParams.get('view') || '');
   const [highlightedRecordId, setHighlightedRecordId] = useState(null);
   const autoOpenRef = useRef(false);
+  // Store vault token for session, initialized from sessionStorage if available
+  const [vaultToken, setVaultToken] = useState(sessionStorage.getItem('vault_token') || null);
 
   // Reset auto-open flag when the target ID changes
   useEffect(() => {
     if (highlightedRecordId) autoOpenRef.current = false;
   }, [highlightedRecordId]);
-
-  // Sync URL param to state (for deep linking from Dashboard)
-  useEffect(() => {
-    const viewParam = searchParams.get('view');
-    if (viewParam) {
-      setHighlightedRecordId(viewParam);
-      setActiveRegion(null);
-      setActiveOffice(null);
-      setActiveCategory(null);
-      setActiveShelf(null);
-
-      // Respect vault parameter for restricted files
-      const isVault = searchParams.get('vault') === 'true';
-      setInRestrictedVault(isVault);
-      // Only force lock if NOT in vault mode
-      if (!isVault) setVaultUnlocked(false);
-    }
-  }, [searchParams]);
-
-  // Clear URL param when search changes (optional, but keeps URL clean)
-  useEffect(() => {
-    if (searchTerm && searchTerm !== searchParams.get('view')) {
-      setSearchParams({});
-    }
-  }, [searchTerm]);
 
   // --- STAFF AUTO-NAVIGATION ---
   // For Staff users, auto-navigate to their assigned office on initial page load
@@ -142,6 +119,64 @@ const Registry = () => {
   const isStaff = user?.role === 'STAFF';
   const isStaffLocked = isStaff && staffAutoNavDone; // Staff is locked after auto-navigation is complete
   const staffAssignedOfficeCode = user?.office?.toUpperCase?.() || ''; // The code Staff was assigned to
+
+  // Sync URL param to state (for deep linking from Dashboard)
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    const isVault = searchParams.get('vault') === 'true';
+
+    // Handle Vault Mode Toggle (Sidebar Link or Manual)
+    if (isVault !== inRestrictedVault) {
+      setInRestrictedVault(isVault);
+      if (!isVault) setVaultUnlocked(false);
+      // Clear search when switching modes to ensure grid is visible
+      setSearchTerm('');
+    }
+
+    // Handle Deep Linking (Specific Record View)
+    if (viewParam) {
+      setHighlightedRecordId(viewParam);
+
+      // Only reset navigation if NOT a locked Staff user
+      // This ensures Staff stay in their assigned office even when deep linking
+      // Only reset navigation if NOT a locked Staff user
+      // FIX: Use direct role check
+      const isStaffUser = user?.role === 'STAFF';
+      if (!isStaffUser) {
+        setActiveRegion(null);
+        setActiveOffice(null);
+        setActiveCategory(null);
+        setActiveShelf(null);
+      } else {
+        // For Staff, we keep their location (assigned office)
+        // The record will be highlighted in the table if it exists in their view
+      }
+
+      // Note: inRestrictedVault is already handled above
+    }
+  }, [searchParams, inRestrictedVault, isStaffLocked]);
+
+  // Clear URL param when search changes (optional, but keeps URL clean)
+  useEffect(() => {
+    if (searchTerm && searchTerm !== searchParams.get('view')) {
+      setSearchParams({});
+    }
+  }, [searchTerm]);
+
+  // Auto-open Password Modal when entering Vault mode if locked
+  useEffect(() => {
+    if (inRestrictedVault && !vaultUnlocked) {
+      if (vaultToken) {
+        // If we have a token, auto-unlock instead of prompting
+        setVaultUnlocked(true);
+      } else if (!vaultPasswordModal) {
+        setVaultPasswordModal(true);
+      }
+    }
+  }, [inRestrictedVault, vaultUnlocked, vaultPasswordModal, vaultToken]);
+
+  // --- STAFF AUTO-NAVIGATION ---
+
 
   useEffect(() => {
     const isStaff = user?.role === 'STAFF';
@@ -280,7 +315,8 @@ const Registry = () => {
           params.restricted_only = 'true';
           // Respect navigation filters in vault
           params.region = activeRegion?.id || '';
-          params.office_id = activeOffice?.office_id || '';
+          const targetOfficeId = activeSubOffice?.office_id || activeOffice?.office_id;
+          params.office_id = targetOfficeId || '';
           params.category = activeCategory?.name || 'All';
           params.shelf = activeShelf || '';
         } else {
@@ -294,6 +330,14 @@ const Registry = () => {
           params.restricted_only = 'false'; // Explicitly clear the flag
         }
 
+        // GUARD: Prevent fetching if we are in Vault Mode but missing context (prevents "All Records" leak)
+        // Unless we are searching globally
+        if (inRestrictedVault && !params.office_id && !params.search) {
+          console.log('[Registry] Skipping fetch: in Vault but no office selected.');
+          return;
+        }
+
+        console.log('[Registry Debug] Fetching Params:', params);
         fetchRecords(params);
       }, 300);
 
@@ -357,9 +401,31 @@ const Registry = () => {
 
   // Navigation Handlers
   const goToRoot = () => {
-    // Block Staff from navigating outside their assigned office
+    // If we are in Restricted Vault and want to exit it
+    if (inRestrictedVault) {
+      setInRestrictedVault(false);
+      setVaultUnlocked(false);
+      // If Staff, we DO NOT reset region/office/sub-office
+      if (!isStaffLocked) {
+        setActiveRegion(null);
+        setActiveOffice(null);
+        setActiveSubOffice(null);
+        setSubOffices([]);
+      }
+      setActiveCategory(null);
+      setActiveShelf(null);
+      setSearchTerm('');
+      setShelves([]);
+      return;
+    }
+
+    // Block Staff from navigating outside their assigned office (if NOT in vault mode already treated above)
     if (isStaffLocked) {
-      toast.error('You can only access your assigned office records');
+      // If they are already at their root (Office Level), just clear sub-levels
+      setActiveCategory(null);
+      setActiveShelf(null);
+      setSearchTerm('');
+      // toast.error('You can only access your assigned office records'); // Optional: Don't show error, just reset
       return;
     }
     setActiveRegion(null);
@@ -559,13 +625,19 @@ const Registry = () => {
   const goToCategory = () => { setActiveShelf(null); setSearchTerm(''); };
 
   const goToVaultRoot = () => {
-    setActiveRegion(null);
-    setActiveOffice(null);
-    setActiveSubOffice(null);
-    setSubOffices([]);
+    // If user is Staff, we DO NOT reset region/office/sub-office
+    if (!isStaffLocked) {
+      setActiveRegion(null);
+      setActiveOffice(null);
+      setActiveSubOffice(null);
+      setSubOffices([]);
+    }
     setActiveCategory(null);
     setActiveShelf(null);
     setSearchTerm('');
+    // If we want to logout, we need a specific Logout button or handle it on mode switch.
+    // BUT for now, let's keep the token active while in the vault.)
+
     setShelves([]);
   };
 
@@ -585,11 +657,28 @@ const Registry = () => {
       if (data.success) {
         setVaultUnlocked(true);
         setInRestrictedVault(true);
-        setActiveRegion(null);
-        setActiveOffice(null);
+        // If Staff, DO NOT reset their location
+        // FIX: Use direct role check to avoid race condition with isStaffLocked state
+        const isStaffUser = user?.role === 'STAFF';
+        if (isStaffUser) {
+          // Keep current location
+        } else {
+          setActiveRegion(null);
+          setActiveOffice(null);
+          setActiveSubOffice(null);
+          setSubOffices([]);
+        }
         setActiveCategory(null);
         setActiveShelf(null);
+        setSearchTerm(''); // Correctly clear search term to show grid
         setVaultPasswordModal(false);
+        setVaultPasswordModal(false);
+        setVaultToken(data.vault_token); // Store token for seamless file access
+        sessionStorage.setItem('vault_token', data.vault_token); // PERSIST TOKEN
+
+        // CRITICAL FIX: Update URL to prevent useEffect from resetting state
+        setSearchParams({ vault: 'true' });
+
         return true;
       }
       return false;
@@ -683,14 +772,48 @@ const Registry = () => {
       shelf: activeShelf || ''
     });
 
+    // REFRESH COUNTS (Folders)
+    // 1. Refresh Regions (Global)
+    if (refreshRegions) refreshRegions();
+
+    // 2. Refresh Offices (if inside a region)
+    if (activeRegion) {
+      getOfficesByRegion(activeRegion.id).then(setOffices);
+    }
+
+    // 3. Refresh Sub-Offices (if inside an office)
+    if (activeOffice) {
+      getSubOffices(activeOffice.office_id).then(subs => {
+        setSubOffices(subs);
+        // DEBUG TOAST
+        if (subs && subs.length > 0) {
+          const first = subs[0];
+          toast.info(`Debug: ${first.code} has ${first.record_count} records / ${first.restricted_record_count} restricted.`);
+        }
+      });
+    }
+
     // Also refresh shelves explicitly
     refreshCurrentShelves();
   };
 
   const handleViewFile = (record) => {
     if (record.is_restricted) {
-      setSelectedRestrictedRecord(record);
-      setPasswordModalOpen(true);
+      // DEBUG: Check why smart unlock might fail
+      console.log('--- [handleViewFile] Debug ---');
+      console.log('Record:', record.record_id);
+      console.log('inRestrictedVault:', inRestrictedVault);
+      console.log('vaultUnlocked:', vaultUnlocked);
+      console.log('vaultToken:', vaultToken ? 'EXISTS' : 'NULL');
+
+      // SMART UNLOCK: If we have a vault session, use it to bypass the second prompt
+      if (inRestrictedVault && vaultUnlocked && vaultToken) {
+        // reuse the handleUnlockSuccess logic directly, PASSING the record to avoid state delay
+        handleUnlockSuccess(record.file_path, vaultToken, record);
+      } else {
+        setSelectedRestrictedRecord(record);
+        setPasswordModalOpen(true);
+      }
     } else {
       const url = `/api/records/stream/${record.file_path}`;
       setViewerUrl(url);
@@ -699,11 +822,12 @@ const Registry = () => {
     }
   };
 
-  const handleUnlockSuccess = (filePath, accessToken) => {
+  const handleUnlockSuccess = (filePath, accessToken, recordOverride = null) => {
+    // Construct the Streaming URL with the short-lived token
     const url = `/api/records/stream/${filePath}?token=${accessToken}`;
-    setViewerUrl(url);
-    setViewerFile(selectedRestrictedRecord);
-    setViewerOpen(true);
+    setViewerUrl(url); // Set the URL for the iframe
+    setViewerFile(recordOverride || selectedRestrictedRecord); // Set the file details for the viewer
+    setViewerOpen(true); // Open the viewer
   };
 
   // Auto-trigger viewer for deep links
@@ -951,7 +1075,7 @@ const Registry = () => {
                   {visibleRegions.map((region) => (
                     <Card
                       key={region.id}
-                      label={region.name}
+                      label={`${region.name} (${(inRestrictedVault ? region.restricted_record_count : region.record_count) || 0})`}
                       subLabel={inRestrictedVault ? 'Encrypted' : (region.status === 'Inactive' ? 'Under Maintenance' : 'Provincial Office')}
                       icon={inRestrictedVault ? <Icons.Lock /> : (region.status === 'Inactive' ? <Icons.Maintenance /> : <Icons.Folder />)}
                       variant={inRestrictedVault ? 'danger' : (region.status === 'Inactive' ? 'maintenance' : 'blue')}
@@ -969,6 +1093,17 @@ const Registry = () => {
                       onClick={enterRestrictedVault}
                     />
                   )}
+                </div>
+              )}
+
+              {/* Empty State for Regional Admin / Vault */}
+              {!loading && visibleRegions.length === 0 && (
+                <div className="col-span-full border-2 border-dashed border-slate-700 bg-slate-800/50 rounded-2xl p-12 flex flex-col items-center justify-center text-center animate-fade-in-up">
+                  <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mb-4">
+                    <Icons.Lock className="w-8 h-8 text-slate-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-300">Restricted Access Area</h3>
+                  <p className="text-slate-500 max-w-sm mt-2">No regional vaults are currently accessible to your account. Please contact the administrator if you believe this is an error.</p>
                 </div>
               )}
             </>
@@ -989,7 +1124,7 @@ const Registry = () => {
                     return (
                       <Card
                         key={office.office_id}
-                        label={office.code}
+                        label={`${office.code} (${(inRestrictedVault ? office.restricted_record_count : office.record_count) || 0})`}
                         subLabel={office.name}
                         icon={inRestrictedVault ? <Icons.Lock /> : <OfficeIcon />}
                         variant={inRestrictedVault ? 'danger' : 'default'}
@@ -1031,7 +1166,7 @@ const Registry = () => {
                   })().map((subOffice) => (
                     <Card
                       key={subOffice.office_id}
-                      label={subOffice.code}
+                      label={`${subOffice.code} (${(inRestrictedVault ? subOffice.restricted_record_count : subOffice.record_count) || 0})`}
                       subLabel={subOffice.name}
                       icon={<svg className={`w-12 h-12 drop-shadow-sm ${inRestrictedVault ? 'text-red-500' : 'text-purple-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" /></svg>}
                       variant={inRestrictedVault ? 'danger' : 'purple'}

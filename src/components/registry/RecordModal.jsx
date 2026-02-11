@@ -126,18 +126,21 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
 
         // Load and filter sub-offices for staff's parent
         getSubOffices(staffAssignments.parentOfficeId).then(subs => {
-            let filteredSubs = subs;
-            if (staffAssignments.assignedUnitIds.length > 0) {
+            let filteredSubs = [];
+
+            // STRICT FILTERING FOR STAFF
+            // If assignedUnitIds has items, show those.
+            // If empty, show NONE (do not fallback to all).
+            if (staffAssignments.assignedUnitIds && staffAssignments.assignedUnitIds.length > 0) {
                 filteredSubs = subs.filter(s => staffAssignments.assignedUnitIds.includes(s.office_id));
+            } else {
+                // Explicitly empty if no unit assignments found (Staff restrictive mode)
+                filteredSubs = [];
             }
+
             setSubOffices(filteredSubs);
 
-            // FIX: INTELLIGENT SELECTION LOGIC
-            // If the current context (currentSubOffice) is valid, use it.
-            // If only one sub-office is available, auto-select it.
-            // Otherwise, keep Parent Office as default (or whatever was initialized)
-
-            // Check if we are opening in a sub-office context that is valid for this staff
+            // INTELLIGENT SELECTION LOGIC
             const contextSubOfficeId = currentSubOffice?.office_id;
             const contextIsValid = contextSubOfficeId && filteredSubs.some(s => s.office_id === contextSubOfficeId);
 
@@ -151,9 +154,8 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                 setSelectedSubOffice(singleUnit.office_id);
                 setFormData(p => ({ ...p, office_id: singleUnit.office_id }));
             } else {
-                // Fallback to Parent Office if no specific sub-office context & multiple choices
-                // BUT: If user manually selected a sub-office in Form (e.g. Edit Mode), respect that too?
-                // For now, default to Parent is safer than random sub-office.
+                // If multiple or none, default to Parent Office ID (unless user manually picks later)
+                // But if filteredSubs is empty, they CAN'T pick a sub-office, so parent is the only choice.
                 if (!formData.office_id) {
                     setFormData(p => ({ ...p, office_id: staffAssignments.parentOfficeId }));
                 }
@@ -275,7 +277,8 @@ const RecordModal = ({ isOpen, onClose, onSuccess, recordToEdit, currentRegion, 
                         }
 
                         // Auto-load sub-offices if parent is known
-                        if (initParent) {
+                        // For STAFF, we skip this because the separate Staff Assignment Effect handles filtering
+                        if (initParent && !isStaffUser) {
                             const subs = await getSubOffices(initParent);
                             setSubOffices(subs);
                         }
